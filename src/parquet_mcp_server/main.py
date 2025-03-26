@@ -11,7 +11,14 @@ import requests
 import asyncio
 import json
 import os
+import logging
 
+# Set up logging
+logging.basicConfig(
+    filename='embedding_server.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # Initialize server
 server = Server("parquet-tools")
@@ -27,21 +34,32 @@ if not embedding_url:
 def get_embedding(text: str, url) -> list:
     # Prepare the payload with a list of prompts
     texts = [text]
+    model = os.getenv("EMBEDDING_MODEL") or "llama2"
     payload = {
-        "model": "nomic-embed-text",
+        "model": model,
         "input": texts  # Pass all texts in a batch
     }
 
-    # Send the request
-    response = requests.post(url, json=payload)
-    # Check if the request was successful
-    if response.status_code == 200:
-        result = response.json()
-        embeddings = np.array(result['embeddings'])  # Assuming the response contains a list of embeddings
-        return embeddings[0]  # Return the embeddings as a NumPy array
-    else:
-        print(f"Error: {response.status_code}, {response.text}")
-        return None  # If there was an error, return None
+    logging.debug(f"Making request to {url} with payload: {payload}")
+    # Send the request with SSL verification disabled
+    try:
+        response = requests.post(url, json=payload, verify=False)
+        # Check if the request was successful
+        if response.status_code == 200:
+            result = response.json()
+            logging.debug(f"Response: {result}")
+            if 'data' in result and result['data'] and 'embedding' in result['data'][0]:
+                embeddings = np.array(result['data'][0]['embedding'])
+                return embeddings
+            else:
+                logging.error(f"No embeddings found in response: {result}")
+                return None
+        else:
+            logging.error(f"Error: {response.status_code}, {response.text}")
+            return None  # If there was an error, return None
+    except Exception as e:
+        logging.error(f"Exception during request: {str(e)}")
+        return None
 
 
 @server.list_tools()

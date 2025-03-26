@@ -60,6 +60,43 @@ async def main():
                     continue
                 print(f"{user}: {response.content}")
 
+async def embed_parquet_async(input_path: str, output_path: str, column_name: str, embedding_column: str):
+    server_params = StdioServerParameters(
+        command="python",
+        args=["-u", "-m", "parquet_mcp_server.main"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+
+            # Call the embed-parquet tool
+            result = await session.call_tool(
+                "embed-parquet",
+                {
+                    "input_path": input_path,
+                    "output_path": output_path,
+                    "column_name": column_name,
+                    "embedding_column": embedding_column
+                }
+            )
+            return result
+
+def embed_parquet(input_path: str, output_path: str, column_name: str, embedding_column: str):
+    """
+    Embed text in a specific column of a parquet file
+    
+    Args:
+        input_path (str): Path to the input Parquet file
+        output_path (str): Path to the output Parquet file
+        column_name (str): The name of the column containing the text to embed
+        embedding_column (str): Name of the new column where embeddings will be saved
+    
+    Returns:
+        The result of the embedding operation
+    """
+    return asyncio.run(embed_parquet_async(input_path, output_path, column_name, embedding_column))
 
 if __name__ == "__main__":
     asyncio.run(main())

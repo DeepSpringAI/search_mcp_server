@@ -517,7 +517,7 @@ wheels = [
 [[package]]
 name = "parquet-mcp-server"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "langchain-mcp-adapters" },
     { name = "langchain-ollama" },
