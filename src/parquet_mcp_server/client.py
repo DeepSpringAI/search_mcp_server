@@ -39,7 +39,8 @@ async def main():
 
             # Create and run the agent
             agent = create_react_agent(model, tools)
-            agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file 'input.parquet' and save the output to 'output.parquet'. please use embedding as final column"})
+            # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file 'input.parquet' and save the output to 'output.parquet'. please use embedding as final column"})
+            agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file 'input.parquet'"})
 
             # print(agent_response)
             # Loop over the responses and print them

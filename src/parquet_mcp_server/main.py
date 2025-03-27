@@ -14,6 +14,7 @@ import os
 import logging
 
 from src.embedding_helper import get_embedding, process_parquet_file
+from src.parquet_helper import get_parquet_info
 
 # Set up logging
 logging.basicConfig(
@@ -55,6 +56,20 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["input_path", "output_path", "column_name", "embedding_column"]
             }
         ),
+        types.Tool(
+            name="parquet-information",
+            description="Get information about a parquet file including column names, number of rows, and file size",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the Parquet file"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -75,6 +90,15 @@ async def handle_call_tool(
             raise ValueError("Missing required arguments")
 
         success, message = process_parquet_file(input_path, output_path, column_name, embedding_column)
+        return [types.TextContent(type="text", text=message)]
+
+    elif name == "parquet-information":
+        file_path = arguments.get("file_path")
+        
+        if not file_path:
+            raise ValueError("Missing file_path argument")
+
+        success, message = get_parquet_info(file_path)
         return [types.TextContent(type="text", text=message)]
 
     else:
