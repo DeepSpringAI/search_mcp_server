@@ -25,8 +25,15 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Install the package using uv
 RUN uv pip install -e .
 
-# Copy the .env file into the container
+# Check if the .env file exists, if not, create it with default values
+RUN if [ ! -f /app/.env ]; then \
+    echo "EMBEDDING_URL=http://0.0.0.0/api/embed" > /app/.env && \
+    echo "OLLAMA_URL=http://0.0.0.0/" >> /app/.env && \
+    echo "EMBEDDING_MODEL=nomic-embed-text" >> /app/.env; \
+    fi
+
+# Copy the .env file into the container (if it exists)
 COPY .env /app/.env
 
-# Use /bin/sh to run commands and ensure compatibility with your requirements
+# Command to run the application
 CMD ["uv", "--directory", "/app/src/parquet_mcp_server", "run", "main.py"]
