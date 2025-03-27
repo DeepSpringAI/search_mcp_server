@@ -22,7 +22,7 @@ model = ChatOllama(
 server_params = StdioServerParameters(
     command="uv",
     # Make sure to update to the full absolute path to your math_server.py file
-    args=["run","main.py"],
+    args=["--directory", "./src/parquet_mcp_server","run","main.py"],
 )
 
 # Wrap the async code inside an async function

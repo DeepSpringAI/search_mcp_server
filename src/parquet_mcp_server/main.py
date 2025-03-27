@@ -13,7 +13,7 @@ import json
 import os
 import logging
 
-from src.embedding_helper import get_embedding
+from src.embedding_helper import get_embedding, process_parquet_file
 
 # Set up logging
 logging.basicConfig(
@@ -74,39 +74,8 @@ async def handle_call_tool(
         if not all([input_path, output_path, column_name, embedding_column]):
             raise ValueError("Missing required arguments")
 
-        try:
-            # Read the parquet file into a pandas dataframe
-            df = pd.read_parquet(input_path)
-            
-            # Check if the column exists
-            if column_name not in df.columns:
-                return [types.TextContent(
-                    type="text",
-                    text=f"Error: Column '{column_name}' not found in the parquet file."
-                )]
-
-            # Apply embedding to each row in the specified column
-            embeddings = []
-            for text in df[column_name]:
-                embedding = get_embedding(str(text), embedding_url)  # Make sure to convert to string if it's not
-                embeddings.append(embedding)
-
-            # Add the embeddings as a new column
-            df[embedding_column] = embeddings
-
-            # Save the modified dataframe to a new Parquet file
-            df.to_parquet(output_path)
-
-            return [types.TextContent(
-                type="text",
-                text=f"Successfully added embedding to column '{embedding_column}' and saved the output to {output_path}"
-            )]
-
-        except Exception as e:
-            return [types.TextContent(
-                type="text",
-                text=f"Error processing parquet file: {str(e)}"
-            )]
+        success, message = process_parquet_file(input_path, output_path, column_name, embedding_column)
+        return [types.TextContent(type="text", text=message)]
 
     else:
         raise ValueError(f"Unknown tool: {name}")
