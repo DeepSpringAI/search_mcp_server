@@ -22,7 +22,7 @@ model = ChatOllama(
 server_params = StdioServerParameters(
     command="uv",
     # Make sure to update to the full absolute path to your math_server.py file
-    args=["run","main.py"],
+    args=["--directory", "./src/parquet_mcp_server","run","main.py"],
 )
 
 # Wrap the async code inside an async function
@@ -39,7 +39,8 @@ async def main():
 
             # Create and run the agent
             agent = create_react_agent(model, tools)
-            agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file 'input.parquet' and save the output to 'output.parquet'. please use embedding as final column"})
+            # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column"})
+            agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/input.parquet'"})
 
             # print(agent_response)
             # Loop over the responses and print them
