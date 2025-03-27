@@ -10,3 +10,6 @@ wheels/
 .venv
 .env
 *.parquet
+
+*.log
+src/parquet_mcp_server/*.log
