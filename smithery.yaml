@@ -1,0 +1,56 @@
+# Smithery.ai configuration
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      ollama_url:
+        type: string
+        description: URL for the Ollama server
+      embedding_url:
+        type: string
+        description: URL for the embedding service
+      embedding_model:
+        type: string
+        description: Model to use for generating embeddings
+      postgres_db:
+        type: string
+        description: PostgreSQL database name
+      postgres_user:
+        type: string
+        description: PostgreSQL username
+      postgres_password:
+        type: string
+        description: PostgreSQL password
+      postgres_host:
+        type: string
+        description: PostgreSQL host
+      postgres_port:
+        type: string
+        description: PostgreSQL port
+    required: ["ollama_url", "embedding_url", "embedding_model"]
+  commandFunction:
+    |-
+    (config) => ({
+      "command": "uv",
+      "args": [
+        "--directory",
+        "./src/parquet_mcp_server",
+        "run",
+        "main.py"
+      ],
+      "env": {
+        "OLLAMA_URL": config.ollama_url,
+        "EMBEDDING_URL": config.embedding_url,
+        "EMBEDDING_MODEL": config.embedding_model,
+        "POSTGRES_DB": config.postgres_db || "",
+        "POSTGRES_USER": config.postgres_user || "",
+        "POSTGRES_PASSWORD": config.postgres_password || "",
+        "POSTGRES_HOST": config.postgres_host || "",
+        "POSTGRES_PORT": config.postgres_port || "5432"
+      }
+    })
+
+build:
+  dockerfile: dockerfile
+  dockerBuildPath: . 
