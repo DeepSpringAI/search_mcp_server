@@ -52,5 +52,5 @@ startCommand:
     })
 
 build:
-  dockerfile: dockerfile
+  dockerfile: Dockerfile
   dockerBuildPath: . 
