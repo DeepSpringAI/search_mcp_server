@@ -33,5 +33,5 @@ ENV POSTGRES_PASSWORD=""
 ENV POSTGRES_HOST=""
 ENV POSTGRES_PORT="5432"
 
-# Command to run the MCP server
-CMD ["uv", "--directory", "./src/parquet_mcp_server", "run", "main.py"]
+# Use bash as the entrypoint
+ENTRYPOINT ["/bin/bash"]
