@@ -135,6 +135,40 @@ def convert_to_duckdb(parquet_path: str, output_dir: str = None):
     """
     return asyncio.run(convert_to_duckdb_async(parquet_path, output_dir))
 
+async def convert_to_postgres_async(parquet_path: str, table_name: str):
+    server_params = StdioServerParameters(
+        command="uv",
+        args=["--directory", "./src/parquet_mcp_server","run","main.py"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+
+            # Call the convert-to-postgres tool
+            result = await session.call_tool(
+                "convert-to-postgres",
+                {
+                    "parquet_path": parquet_path,
+                    "table_name": table_name
+                }
+            )
+            return result
+
+def convert_to_postgres(parquet_path: str, table_name: str):
+    """
+    Convert a Parquet file to a PostgreSQL table with pgvector support
+    
+    Args:
+        parquet_path (str): Path to the input Parquet file
+        table_name (str): Name of the PostgreSQL table to create or append to
+    
+    Returns:
+        The result of the conversion operation
+    """
+    return asyncio.run(convert_to_postgres_async(parquet_path, table_name))
+
 if __name__ == "__main__":
     asyncio.run(main())
 

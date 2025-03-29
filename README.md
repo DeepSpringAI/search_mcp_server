@@ -1,16 +1,18 @@
 # parquet_mcp_server
 
-A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers three main functionalities:
+A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers four main functionalities:
 
 1. **Text Embedding Generation**: Convert text columns in Parquet files into vector embeddings using Ollama models
 2. **Parquet File Analysis**: Extract detailed information about Parquet files including schema, row count, and file size
 3. **DuckDB Integration**: Convert Parquet files to DuckDB databases for efficient querying and analysis
+4. **PostgreSQL Integration**: Convert Parquet files to PostgreSQL tables with pgvector support for vector similarity search
 
 This server is particularly useful for:
 - Data scientists working with large Parquet datasets
 - Applications requiring vector embeddings for text data
 - Projects needing to analyze or convert Parquet files
 - Workflows that benefit from DuckDB's fast querying capabilities
+- Applications requiring vector similarity search with PostgreSQL and pgvector
 
 ## Installation
 
@@ -43,6 +45,13 @@ Create a `.env` file with the following variables:
 EMBEDDING_URL=  # URL for the embedding service
 OLLAMA_URL=    # URL for Ollama server
 EMBEDDING_MODEL=nomic-embed-text  # Model to use for generating embeddings
+
+# PostgreSQL Configuration
+POSTGRES_DB=your_database_name
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
 ```
 
 ## Usage with Claude Desktop
@@ -67,7 +76,7 @@ Add this to your Claude Desktop configuration file (`claude_desktop_config.json`
 
 ## Available Tools
 
-The server provides three main tools:
+The server provides four main tools:
 
 1. **Embed Parquet**: Adds embeddings to a specific column in a Parquet file
    - Required parameters:
@@ -87,6 +96,11 @@ The server provides three main tools:
    - Optional parameters:
      - `output_dir`: Directory to save the DuckDB database (defaults to same directory as input file)
 
+4. **Convert to PostgreSQL**: Convert a Parquet file to a PostgreSQL table with pgvector support
+   - Required parameters:
+     - `parquet_path`: Path to the input Parquet file
+     - `table_name`: Name of the PostgreSQL table to create or append to
+
 ## Example Prompts
 
 Here are some example prompts you can use with the agent:
@@ -104,6 +118,11 @@ Here are some example prompts you can use with the agent:
 ### For DuckDB Conversion:
 ```
 "Please convert the parquet file '/path/to/input.parquet' to DuckDB format and save it in '/path/to/output/directory'"
+```
+
+### For PostgreSQL Conversion:
+```
+"Please convert the parquet file '/path/to/input.parquet' to a PostgreSQL table named 'my_table'"
 ```
 
 ## Testing the MCP Server
@@ -125,12 +144,15 @@ python src/tests/test_parquet_info.py
 
 # Test DuckDB conversion
 python src/tests/test_duckdb_conversion.py
+
+# Test PostgreSQL conversion
+python src/tests/test_postgres_conversion.py
 ```
 
 You can also test the server using the client directly:
 
 ```python
-from parquet_mcp_server.client import convert_to_duckdb, embed_parquet, get_parquet_info
+from parquet_mcp_server.client import convert_to_duckdb, embed_parquet, get_parquet_info, convert_to_postgres
 
 # Test DuckDB conversion
 result = convert_to_duckdb(
@@ -149,6 +171,12 @@ result = embed_parquet(
 
 # Test parquet information
 result = get_parquet_info("input.parquet")
+
+# Test PostgreSQL conversion
+result = convert_to_postgres(
+    parquet_path="input.parquet",
+    table_name="my_table"
+)
 ```
 
 ### Troubleshooting
@@ -162,6 +190,11 @@ result = get_parquet_info("input.parquet")
    - The input Parquet file exists and is readable
    - You have write permissions in the output directory
    - The Parquet file is not corrupted
+4. If PostgreSQL conversion fails, check:
+   - The PostgreSQL connection settings in your `.env` file are correct
+   - The PostgreSQL server is running and accessible
+   - You have the necessary permissions to create/modify tables
+   - The pgvector extension is installed in your database
 
 ### API Response Format
 
@@ -186,3 +219,5 @@ The embeddings are returned in the following format:
 Each embedding vector is stored in the Parquet file as a NumPy array in the specified embedding column.
 
 The DuckDB conversion tool returns a success message with the path to the created database file or an error message if the conversion fails.
+
+The PostgreSQL conversion tool returns a success message indicating whether a new table was created or data was appended to an existing table.

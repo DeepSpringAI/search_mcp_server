@@ -16,6 +16,7 @@ import logging
 from src.embedding_helper import get_embedding, process_parquet_file
 from src.parquet_helper import get_parquet_info
 from src.duckdb_helper import convert_parquet_to_duckdb
+from src.postgres_helper import convert_parquet_to_postgres
 
 # Set up logging
 logging.basicConfig(
@@ -93,6 +94,24 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["parquet_path"]
             }
         ),
+        types.Tool(
+            name="convert-to-postgres",
+            description="Convert a Parquet file to a PostgreSQL table with pgvector support",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "parquet_path": {
+                        "type": "string",
+                        "description": "Path to the input Parquet file"
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "Name of the PostgreSQL table to create or append to"
+                    }
+                },
+                "required": ["parquet_path", "table_name"]
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -133,6 +152,16 @@ async def handle_call_tool(
             raise ValueError("Missing parquet_path argument")
 
         success, message = convert_parquet_to_duckdb(parquet_path, output_dir)
+        return [types.TextContent(type="text", text=message)]
+
+    elif name == "convert-to-postgres":
+        parquet_path = arguments.get("parquet_path")
+        table_name = arguments.get("table_name")
+        
+        if not all([parquet_path, table_name]):
+            raise ValueError("Missing required arguments")
+
+        success, message = convert_parquet_to_postgres(parquet_path, table_name)
         return [types.TextContent(type="text", text=message)]
 
     else:
