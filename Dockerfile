@@ -1,39 +1,37 @@
-# Use an official Python runtime as a parent image (Debian-based)
-FROM python:3.9-slim
+# Use Python 3.8 as base image
+FROM python:3.8-slim
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
-
-# Clone the repository into the container
-COPY . /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
+    build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# Install uv for Python package management
 RUN pip install uv
 
-# Create and activate a virtual environment
-RUN uv venv
+# Copy the project files
+COPY . .
 
-# Set the virtual environment's Python as the default interpreter for the system
+# Create and activate virtual environment
+RUN uv venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install the package using uv
+# Install the project and its dependencies
 RUN uv pip install -e .
 
-# Check if the .env file exists, if not, create it with default values
-RUN if [ ! -f /app/.env ]; then \
-    echo "EMBEDDING_URL=http://0.0.0.0/api/embed" > /app/.env && \
-    echo "OLLAMA_URL=http://0.0.0.0/" >> /app/.env && \
-    echo "EMBEDDING_MODEL=nomic-embed-text" >> /app/.env; \
-    fi
+# Set environment variables with default values
+ENV OLLAMA_URL=""
+ENV EMBEDDING_URL=""
+ENV EMBEDDING_MODEL="nomic-embed-text"
+ENV POSTGRES_DB=""
+ENV POSTGRES_USER=""
+ENV POSTGRES_PASSWORD=""
+ENV POSTGRES_HOST=""
+ENV POSTGRES_PORT="5432"
 
-# Copy the .env file into the container (if it exists)
-COPY .env /app/.env
-
-# Command to run the application
-CMD ["uv", "--directory", "/app/src/parquet_mcp_server", "run", "main.py"]
+# Command to run the MCP server
+CMD ["uv", "--directory", "./src/parquet_mcp_server", "run", "main.py"]
