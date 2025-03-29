@@ -25,18 +25,13 @@ uv pip install -e .
 
 ### Environment
 
-you need to define this .env file:
+Create a `.env` file with the following variables:
 
 ```bash
-EMBEDDING_URL=
-OLLAMA_URL=
+EMBEDDING_URL=  # URL for the embedding service
+OLLAMA_URL=    # URL for Ollama server
+EMBEDDING_MODEL=nomic-embed-text  # Model to use for generating embeddings
 ```
-
-EMBEDDING_URL is the embedding url of ollama and the ollama url is used in the agent for testing.
-
-## Usage with an Agent
-
-In (`client.py`) there is an anget in langchain which you can test the tools with sample prompt.
 
 ## Usage with Claude Desktop
 
@@ -58,83 +53,48 @@ Add this to your Claude Desktop configuration file (`claude_desktop_config.json`
 }
 ```
 
----
+## Available Tools
 
-That's it! Now you can run the server using Claude Desktop.
+The server provides two main tools:
+
+1. **Embed Parquet**: Adds embeddings to a specific column in a Parquet file
+   - Required parameters:
+     - `input_path`: Path to input Parquet file
+     - `output_path`: Path to save the output
+     - `column_name`: Column containing text to embed
+     - `embedding_column`: Name for the new embedding column
+     - `batch_size`: Number of texts to process in each batch (for better performance)
+
+2. **Parquet Information**: Get details about a Parquet file
+   - Required parameters:
+     - `file_path`: Path to the Parquet file to analyze
+
+## Example Prompts
+
+Here are some example prompts you can use with the agent:
+
+### For Embedding:
+```
+"Please embed the column 'text' in the parquet file '/path/to/input.parquet' and save the output to '/path/to/output.parquet'. Use 'embeddings' as the final column name and a batch size of 2"
+```
+
+### For Parquet Information:
+```
+"Please give me some information about the parquet file '/path/to/input.parquet'"
+```
 
 ## Testing the MCP Server
 
-You can test the MCP server in two ways: using the test client directly or using the provided agent.
-
-### Using the Test Client
-
-1. First, create a sample Parquet file with some text data:
-
-```python
-import pandas as pd
-
-# Create a sample DataFrame
-df = pd.DataFrame({
-    'text': ['This is a test', 'Another test sentence']
-})
-
-# Save it as a Parquet file
-df.to_parquet('sample.parquet')
-```
-
-2. Run the test client with your parameters:
+You can test the server using the provided test client:
 
 ```bash
 python src/test_mcp_embedding.py '{
     "input_path": "sample.parquet",
     "output_path": "output.parquet",
     "column_name": "text",
-    "embedding_column": "embeddings"
+    "embedding_column": "embeddings",
+    "batch_size": 10
 }'
-```
-
-3. Verify the output:
-
-```python
-import pandas as pd
-
-# Read the output file
-df = pd.read_parquet('output.parquet')
-
-# Check the contents
-print('Columns:', df.columns.tolist())
-print('Shape:', df.shape)
-print('Sample embedding size:', len(df['embeddings'].iloc[0]))
-```
-
-The output should show that:
-- The file has both 'text' and 'embeddings' columns
-- Each embedding is a 768-dimensional vector
-- The original text data is preserved
-
-### Using the Agent
-
-The agent provides a more natural language interface to the embedding functionality. You can use it by running:
-
-```bash
-python src/parquet_mcp_server/client.py
-```
-
-Example prompts for the agent:
-- "Please embed the column 'text' in the parquet file 'input.parquet' and save the output to 'output.parquet'"
-- "Generate embeddings for the 'description' column in 'data.parquet' and save them as 'vectors' in 'result.parquet'"
-
-### Environment Setup
-
-Make sure your `.env` file is properly configured:
-
-```bash
-EMBEDDING_URL=https://your-ollama-server/v1/embeddings
-OLLAMA_URL=https://your-ollama-server
-PYTHONWARNINGS=ignore:Unverified HTTPS request
-REQUESTS_CA_BUNDLE=""
-CURL_CA_BUNDLE=""
-SSL_CERT_VERIFY=false
 ```
 
 ### Troubleshooting
