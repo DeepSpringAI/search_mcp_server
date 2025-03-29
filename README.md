@@ -1,5 +1,17 @@
 # parquet_mcp_server
 
+A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers three main functionalities:
+
+1. **Text Embedding Generation**: Convert text columns in Parquet files into vector embeddings using Ollama models
+2. **Parquet File Analysis**: Extract detailed information about Parquet files including schema, row count, and file size
+3. **DuckDB Integration**: Convert Parquet files to DuckDB databases for efficient querying and analysis
+
+This server is particularly useful for:
+- Data scientists working with large Parquet datasets
+- Applications requiring vector embeddings for text data
+- Projects needing to analyze or convert Parquet files
+- Workflows that benefit from DuckDB's fast querying capabilities
+
 ## Installation
 
 ### Clone this repository
