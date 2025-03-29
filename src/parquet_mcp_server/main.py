@@ -15,6 +15,7 @@ import logging
 
 from src.embedding_helper import get_embedding, process_parquet_file
 from src.parquet_helper import get_parquet_info
+from src.duckdb_helper import convert_parquet_to_duckdb
 
 # Set up logging
 logging.basicConfig(
@@ -74,6 +75,24 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["file_path"]
             }
         ),
+        types.Tool(
+            name="convert-to-duckdb",
+            description="Convert a Parquet file to a DuckDB database",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "parquet_path": {
+                        "type": "string",
+                        "description": "Path to the input Parquet file"
+                    },
+                    "output_dir": {
+                        "type": "string",
+                        "description": "Directory to save the DuckDB database (optional)"
+                    }
+                },
+                "required": ["parquet_path"]
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -104,6 +123,16 @@ async def handle_call_tool(
             raise ValueError("Missing file_path argument")
 
         success, message = get_parquet_info(file_path)
+        return [types.TextContent(type="text", text=message)]
+
+    elif name == "convert-to-duckdb":
+        parquet_path = arguments.get("parquet_path")
+        output_dir = arguments.get("output_dir")
+        
+        if not parquet_path:
+            raise ValueError("Missing parquet_path argument")
+
+        success, message = convert_parquet_to_duckdb(parquet_path, output_dir)
         return [types.TextContent(type="text", text=message)]
 
     else:

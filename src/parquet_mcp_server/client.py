@@ -39,8 +39,9 @@ async def main():
 
             # Create and run the agent
             agent = create_react_agent(model, tools)
-            agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column and also with batch size 2"})
+            # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column and also with batch size 2"})
             # agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet'"})
+            agent_response = await agent.ainvoke({"messages": "Please convert the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' to DuckDB format and save it in '/home/agent/workspace/parquet_mcp_server/db_output'"})
 
             # print(agent_response)
             # Loop over the responses and print them
@@ -99,6 +100,40 @@ def embed_parquet(input_path: str, output_path: str, column_name: str, embedding
         The result of the embedding operation
     """
     return asyncio.run(embed_parquet_async(input_path, output_path, column_name, embedding_column, batch_size))
+
+async def convert_to_duckdb_async(parquet_path: str, output_dir: str = None):
+    server_params = StdioServerParameters(
+        command="uv",
+        args=["--directory", "./src/parquet_mcp_server","run","main.py"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+
+            # Call the convert-to-duckdb tool
+            result = await session.call_tool(
+                "convert-to-duckdb",
+                {
+                    "parquet_path": parquet_path,
+                    "output_dir": output_dir
+                }
+            )
+            return result
+
+def convert_to_duckdb(parquet_path: str, output_dir: str = None):
+    """
+    Convert a Parquet file to a DuckDB database
+    
+    Args:
+        parquet_path (str): Path to the input Parquet file
+        output_dir (str, optional): Directory to save the DuckDB database
+    
+    Returns:
+        The result of the conversion operation
+    """
+    return asyncio.run(convert_to_duckdb_async(parquet_path, output_dir))
 
 if __name__ == "__main__":
     asyncio.run(main())
