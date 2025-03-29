@@ -1,55 +1,44 @@
-# Smithery.ai configuration
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .
 startCommand:
   type: stdio
   configSchema:
+    # JSON Schema defining the configuration options for the MCP.
     type: object
+    required:
+      - ollama_url
+      - embedding_url
+      - embedding_model
     properties:
       ollama_url:
         type: string
         description: URL for the Ollama server
-        default: "http://localhost:11434"
-      embedding_url:
-        type: string
-        description: URL for the embedding service
-        default: "http://localhost:8000"
-      embedding_model:
-        type: string
-        description: Model to use for generating embeddings
-        default: "nomic-embed-text"
-        enum: ["nomic-embed-text", "llama2", "mistral"]
       postgres_db:
         type: string
         description: PostgreSQL database name
-        default: "parquet_db"
-      postgres_user:
+      embedding_url:
         type: string
-        description: PostgreSQL username
-        default: "postgres"
-      postgres_password:
-        type: string
-        description: PostgreSQL password
-        default: "postgres"
+        description: URL for the embedding service
       postgres_host:
         type: string
         description: PostgreSQL host
-        default: "localhost"
       postgres_port:
         type: string
         description: PostgreSQL port
-        default: "5432"
-      batch_size:
-        type: integer
-        description: Batch size for embedding generation
-        default: 2
-        minimum: 1
-        maximum: 100
-      log_level:
+      postgres_user:
         type: string
-        description: Logging level for the server
-        default: "INFO"
-        enum: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    required: ["ollama_url", "embedding_url", "embedding_model"]
+        description: PostgreSQL username
+      embedding_model:
+        type: string
+        description: Model to use for generating embeddings
+      postgres_password:
+        type: string
+        description: PostgreSQL password
   commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
     (config) => ({
       "command": "uv",
@@ -63,16 +52,10 @@ startCommand:
         "OLLAMA_URL": config.ollama_url,
         "EMBEDDING_URL": config.embedding_url,
         "EMBEDDING_MODEL": config.embedding_model,
-        "POSTGRES_DB": config.postgres_db,
-        "POSTGRES_USER": config.postgres_user,
-        "POSTGRES_PASSWORD": config.postgres_password,
-        "POSTGRES_HOST": config.postgres_host,
-        "POSTGRES_PORT": config.postgres_port,
-        "BATCH_SIZE": config.batch_size.toString(),
-        "LOG_LEVEL": config.log_level
+        "POSTGRES_DB": config.postgres_db || "",
+        "POSTGRES_USER": config.postgres_user || "",
+        "POSTGRES_PASSWORD": config.postgres_password || "",
+        "POSTGRES_HOST": config.postgres_host || "",
+        "POSTGRES_PORT": config.postgres_port || "5432"
       }
     })
-
-build:
-  dockerfile: Dockerfile
-  dockerBuildPath: . 
