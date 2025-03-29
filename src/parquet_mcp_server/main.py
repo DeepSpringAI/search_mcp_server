@@ -51,9 +51,13 @@ async def handle_list_tools() -> list[types.Tool]:
                     "embedding_column": {
                         "type": "string",
                         "description": "Name of the new column where embeddings will be saved"
+                    },
+                    "batch_size": {
+                        "type": "int",
+                        "description": "batch size for the embedding"
                     }
                 },
-                "required": ["input_path", "output_path", "column_name", "embedding_column"]
+                "required": ["input_path", "output_path", "column_name", "embedding_column", "batch_size"]
             }
         ),
         types.Tool(
@@ -85,11 +89,12 @@ async def handle_call_tool(
         output_path = arguments.get("output_path")
         column_name = arguments.get("column_name")
         embedding_column = arguments.get("embedding_column")
+        batch_size = arguments.get("batch_size")
 
-        if not all([input_path, output_path, column_name, embedding_column]):
+        if not all([input_path, output_path, column_name, embedding_column, batch_size]):
             raise ValueError("Missing required arguments")
 
-        success, message = process_parquet_file(input_path, output_path, column_name, embedding_column)
+        success, message = process_parquet_file(input_path, output_path, column_name, embedding_column, batch_size)
         return [types.TextContent(type="text", text=message)]
 
     elif name == "parquet-information":

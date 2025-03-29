@@ -7,14 +7,29 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+
 # Embedding URL from the .env file
 embedding_url = os.getenv("EMBEDDING_URL")
 if not embedding_url:
     raise ValueError("EMBEDDING_URL not found in .env file")
 
-def get_embedding(text: str, url) -> list:
-    # Prepare the payload with a list of prompts
-    texts = [text]
+def get_embedding(texts: list, url) -> list:
+    """
+    Fetch embeddings for a batch of texts from the embedding server.
+
+    Args:
+        texts (list): A list of texts to generate embeddings for.
+        url (str): The URL of the embedding server.
+
+    Returns:
+        list: A list of embeddings corresponding to the input texts.
+    """
     model = os.getenv("EMBEDDING_MODEL") or "llama2"
     payload = {
         "model": model,
@@ -22,38 +37,37 @@ def get_embedding(text: str, url) -> list:
     }
 
     logging.debug(f"Making request to {url} with payload: {payload}")
-    # Send the request with SSL verification disabled
     try:
         response = requests.post(url, json=payload, verify=False)
-        # Check if the request was successful
         if response.status_code == 200:
             result = response.json()
-            logging.debug(f"Response: {result}")
-            if 'data' in result and result['data'] and 'embedding' in result['data'][0]:
-                embeddings = np.array(result['data'][0]['embedding'])
+            # logging.debug(f"Response: {result}")
+            if 'embeddings' in result:
+                embeddings = np.array(result['embeddings'])
                 return embeddings
             else:
                 logging.error(f"No embeddings found in response: {result}")
-                return None
+                return []
         else:
             logging.error(f"Error: {response.status_code}, {response.text}")
-            return None  # If there was an error, return None
+            return []  # Return an empty list on error
     except Exception as e:
         logging.error(f"Exception during request: {str(e)}")
-        return None
+        return []
 
-def process_parquet_file(input_path: str, output_path: str, column_name: str, embedding_column: str) -> tuple[bool, str]:
+def process_parquet_file(input_path: str, output_path: str, column_name: str, embedding_column: str, batch_size: int) -> tuple[bool, str]:
     """
-    Process a parquet file by adding embeddings to a specified column.
-    
+    Process a parquet file by adding embeddings to a specified column with batch processing.
+
     Args:
-        input_path (str): Path to the input Parquet file
-        output_path (str): Path to the output Parquet file
-        column_name (str): The name of the column containing the text to embed
-        embedding_column (str): Name of the new column where embeddings will be saved
-        
+        input_path (str): Path to the input Parquet file.
+        output_path (str): Path to the output Parquet file.
+        column_name (str): The name of the column containing the text to embed.
+        embedding_column (str): Name of the new column where embeddings will be saved.
+        batch_size (int): The size of each batch for embedding requests.
+
     Returns:
-        tuple[bool, str]: A tuple containing success status and message
+        tuple[bool, str]: A tuple containing success status and message.
     """
     try:
         import pandas as pd
@@ -65,11 +79,21 @@ def process_parquet_file(input_path: str, output_path: str, column_name: str, em
         if column_name not in df.columns:
             return False, f"Error: Column '{column_name}' not found in the parquet file."
 
-        # Apply embedding to each row in the specified column
+        # Prepare to process in batches
         embeddings = []
-        for text in df[column_name]:
-            embedding = get_embedding(str(text), embedding_url)  # Make sure to convert to string if it's not
-            embeddings.append(embedding)
+        texts = df[column_name].astype(str).tolist()  # Convert all column entries to string
+        num_batches = len(texts) // batch_size + (1 if len(texts) % batch_size != 0 else 0)
+
+        # logging.info(f"Processing {num_batches} batches of {batch_size} texts")
+        logging.debug(f"Processing {num_batches} batches of {batch_size} texts")
+        for i in range(num_batches):
+            batch_texts = texts[i * batch_size: (i + 1) * batch_size]
+            batch_embeddings = get_embedding(batch_texts, embedding_url)
+            embeddings.extend(batch_embeddings)  # Add the batch embeddings to the list
+
+        # Ensure the embeddings list matches the number of rows in the dataframe
+        if len(embeddings) != len(df):
+            return False, f"Error: The number of embeddings does not match the number of rows in the input file. {len(embeddings)} != {len(df)}"
 
         # Add the embeddings as a new column
         df[embedding_column] = embeddings

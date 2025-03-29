@@ -39,8 +39,8 @@ async def main():
 
             # Create and run the agent
             agent = create_react_agent(model, tools)
-            # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column"})
-            agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/input.parquet'"})
+            agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column"})
+            # agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet'"})
 
             # print(agent_response)
             # Loop over the responses and print them
@@ -61,10 +61,10 @@ async def main():
                     continue
                 print(f"{user}: {response.content}")
 
-async def embed_parquet_async(input_path: str, output_path: str, column_name: str, embedding_column: str):
+async def embed_parquet_async(input_path: str, output_path: str, column_name: str, embedding_column: str, batch_size: int):
     server_params = StdioServerParameters(
-        command="python",
-        args=["-u", "-m", "parquet_mcp_server.main"],
+        command="uv",
+        args=["--directory", "./src/parquet_mcp_server","run","main.py"],
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -79,12 +79,13 @@ async def embed_parquet_async(input_path: str, output_path: str, column_name: st
                     "input_path": input_path,
                     "output_path": output_path,
                     "column_name": column_name,
-                    "embedding_column": embedding_column
+                    "embedding_column": embedding_column,
+                    "batch_size": batch_size
                 }
             )
             return result
 
-def embed_parquet(input_path: str, output_path: str, column_name: str, embedding_column: str):
+def embed_parquet(input_path: str, output_path: str, column_name: str, embedding_column: str, batch_size: int):
     """
     Embed text in a specific column of a parquet file
     
@@ -97,7 +98,7 @@ def embed_parquet(input_path: str, output_path: str, column_name: str, embedding
     Returns:
         The result of the embedding operation
     """
-    return asyncio.run(embed_parquet_async(input_path, output_path, column_name, embedding_column))
+    return asyncio.run(embed_parquet_async(input_path, output_path, column_name, embedding_column, batch_size))
 
 if __name__ == "__main__":
     asyncio.run(main())

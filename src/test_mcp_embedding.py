@@ -5,7 +5,7 @@ from parquet_mcp_server.client import embed_parquet
 def main():
     if len(sys.argv) < 2:
         print("Please provide a JSON string as argument")
-        print("Example: python test_mcp_embedding.py '{\"input_path\": \"sample.parquet\", \"output_path\": \"output.parquet\", \"column_name\": \"text\", \"embedding_column\": \"embeddings\"}'")
+        print("Example: python test_mcp_embedding.py '{\"input_path\": \"sample.parquet\", \"output_path\": \"output.parquet\", \"column_name\": \"text\", \"embedding_column\": \"embeddings\", \"batch_size\": 10}'")
         sys.exit(1)
 
     try:
@@ -17,7 +17,8 @@ def main():
             input_path=args.get("input_path"),
             output_path=args.get("output_path"),
             column_name=args.get("column_name"),
-            embedding_column=args.get("embedding_column")
+            embedding_column=args.get("embedding_column"),
+            batch_size=args.get("batch_size")
         )
         
         print("Result:", result)
