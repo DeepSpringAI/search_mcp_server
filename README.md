@@ -1,4 +1,5 @@
 # parquet_mcp_server
+[![smithery badge](https://smithery.ai/badge/@DeepSpringAI/parquet_mcp_server)](https://smithery.ai/server/@DeepSpringAI/parquet_mcp_server)
 
 A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers four main functionalities:
 
@@ -15,6 +16,14 @@ This server is particularly useful for:
 - Applications requiring vector similarity search with PostgreSQL and pgvector
 
 ## Installation
+
+### Installing via Smithery
+
+To install Parquet MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@DeepSpringAI/parquet_mcp_server):
+
+```bash
+npx -y @smithery/cli install @DeepSpringAI/parquet_mcp_server --client claude
+```
 
 ### Clone this repository
 
