@@ -13,3 +13,5 @@ wheels/
 
 *.log
 src/parquet_mcp_server/*.log
+
+temp/
