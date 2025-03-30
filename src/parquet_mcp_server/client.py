@@ -41,7 +41,8 @@ async def main():
             agent = create_react_agent(model, tools)
             # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column and also with batch size 2"})
             # agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet'"})
-            agent_response = await agent.ainvoke({"messages": "Please convert the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' to DuckDB format and save it in '/home/agent/workspace/parquet_mcp_server/db_output'"})
+            # agent_response = await agent.ainvoke({"messages": "Please convert the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' to DuckDB format and save it in '/home/agent/workspace/parquet_mcp_server/db_output'"})
+            # agent_response = await agent.ainvoke({"messages": "Please process the markdown file '/home/agent/workspace/parquet_mcp_server/README.md' and save the chunks to '/home/agent/workspace/parquet_mcp_server/output/readme_chunks.parquet'"})
 
             # print(agent_response)
             # Loop over the responses and print them
@@ -168,6 +169,51 @@ def convert_to_postgres(parquet_path: str, table_name: str):
         The result of the conversion operation
     """
     return asyncio.run(convert_to_postgres_async(parquet_path, table_name))
+
+async def chunk_markdown_async(input_path: str, output_path: str) -> tuple[bool, str]:
+    """
+    Process a markdown file into chunks and save as parquet
+    
+    Args:
+        input_path (str): Path to the markdown file to process
+        output_path (str): Path where to save the output parquet file
+    
+    Returns:
+        tuple[bool, str]: Success status and message with output location
+    """
+    server_params = StdioServerParameters(
+        command="uv",
+        args=["--directory", "./src/parquet_mcp_server", "run", "main.py"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+
+            # Call the process-markdown tool
+            result = await session.call_tool(
+                "process-markdown",
+                {
+                    "file_path": input_path,
+                    "output_path": output_path
+                }
+            )
+            return result
+            
+
+def chunk_markdown(input_path: str, output_path: str) -> tuple[bool, str]:
+    """
+    Process a markdown file into chunks and save as parquet (synchronous version)
+    
+    Args:
+        input_path (str): Path to the markdown file to process
+        output_path (str): Path where to save the output parquet file
+    
+    Returns:
+        tuple[bool, str]: Success status and message with output location
+    """
+    return asyncio.run(chunk_markdown_async(input_path, output_path))
 
 if __name__ == "__main__":
     asyncio.run(main())

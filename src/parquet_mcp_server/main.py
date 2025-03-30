@@ -17,6 +17,7 @@ from src.embedding_helper import get_embedding, process_parquet_file
 from src.parquet_helper import get_parquet_info
 from src.duckdb_helper import convert_parquet_to_duckdb
 from src.postgres_helper import convert_parquet_to_postgres
+from parquet_mcp_server.src.markdown_helper import process_markdown_file
 
 # Set up logging
 logging.basicConfig(
@@ -112,6 +113,24 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["parquet_path", "table_name"]
             }
         ),
+        types.Tool(
+            name="process-markdown",
+            description="Convert a markdown file into structured JSON with text chunks and save as parquet",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the markdown file"
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "Path to save the output parquet file"
+                    }
+                },
+                "required": ["file_path", "output_path"]
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -121,7 +140,7 @@ async def handle_call_tool(
     """Handle parquet tool execution requests."""
     if not arguments:
         raise ValueError("Missing arguments")
-
+    
     if name == "embed-parquet":
         input_path = arguments.get("input_path")
         output_path = arguments.get("output_path")
@@ -163,6 +182,16 @@ async def handle_call_tool(
 
         success, message = convert_parquet_to_postgres(parquet_path, table_name)
         return [types.TextContent(type="text", text=message)]
+
+    elif name == "process-markdown":
+        file_path = arguments.get("file_path")
+        output_path = arguments.get("output_path")
+        
+        if not all([file_path, output_path]):
+            raise ValueError("Missing required arguments")
+
+        success, result = process_markdown_file(file_path, output_path)
+        return [types.TextContent(type="text", text=result)]  # result is error message
 
     else:
         raise ValueError(f"Unknown tool: {name}")

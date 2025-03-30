@@ -3,13 +3,17 @@ import os
 from test_embedding import test_embed_parquet
 from test_parquet_info import test_parquet_info
 from test_duckdb_conversion import test_duckdb_conversion
+from test_postgres_conversion import test_postgres_conversion
+from test_markdown_processing import test_markdown_processing
 
 def run_all_tests():
     """Run all tests and report results"""
     tests = [
         ("Embedding Test", test_embed_parquet),
         ("Parquet Info Test", test_parquet_info),
-        ("DuckDB Conversion Test", test_duckdb_conversion)
+        ("DuckDB Conversion Test", test_duckdb_conversion),
+        ("PostgreSQL Conversion Test", test_postgres_conversion),
+        ("Markdown Processing Test", test_markdown_processing)
     ]
     
     success_count = 0

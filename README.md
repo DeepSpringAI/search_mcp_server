@@ -1,12 +1,13 @@
 # parquet_mcp_server
 [![smithery badge](https://smithery.ai/badge/@DeepSpringAI/parquet_mcp_server)](https://smithery.ai/server/@DeepSpringAI/parquet_mcp_server)
 
-A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers four main functionalities:
+A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers five main functionalities:
 
 1. **Text Embedding Generation**: Convert text columns in Parquet files into vector embeddings using Ollama models
 2. **Parquet File Analysis**: Extract detailed information about Parquet files including schema, row count, and file size
 3. **DuckDB Integration**: Convert Parquet files to DuckDB databases for efficient querying and analysis
 4. **PostgreSQL Integration**: Convert Parquet files to PostgreSQL tables with pgvector support for vector similarity search
+5. **Markdown Processing**: Convert markdown files into chunked text with metadata, preserving document structure and links
 
 This server is particularly useful for:
 - Data scientists working with large Parquet datasets
@@ -85,7 +86,7 @@ Add this to your Claude Desktop configuration file (`claude_desktop_config.json`
 
 ## Available Tools
 
-The server provides four main tools:
+The server provides five main tools:
 
 1. **Embed Parquet**: Adds embeddings to a specific column in a Parquet file
    - Required parameters:
@@ -109,6 +110,16 @@ The server provides four main tools:
    - Required parameters:
      - `parquet_path`: Path to the input Parquet file
      - `table_name`: Name of the PostgreSQL table to create or append to
+
+5. **Process Markdown**: Convert markdown files into structured chunks with metadata
+   - Required parameters:
+     - `file_path`: Path to the markdown file to process
+     - `output_path`: Path to save the output parquet file
+   - Features:
+     - Preserves document structure and links
+     - Extracts section headers and metadata
+     - Memory-optimized for large files
+     - Configurable chunk size and overlap
 
 ## Example Prompts
 
@@ -134,6 +145,11 @@ Here are some example prompts you can use with the agent:
 "Please convert the parquet file '/path/to/input.parquet' to a PostgreSQL table named 'my_table'"
 ```
 
+### For Markdown Processing:
+```
+"Please process the markdown file '/path/to/input.md' and save the chunks to '/path/to/output.parquet'"
+```
+
 ## Testing the MCP Server
 
 The project includes a comprehensive test suite in the `src/tests` directory. You can run all tests using:
@@ -156,12 +172,21 @@ python src/tests/test_duckdb_conversion.py
 
 # Test PostgreSQL conversion
 python src/tests/test_postgres_conversion.py
+
+# Test Markdown processing
+python src/tests/test_markdown_processing.py
 ```
 
 You can also test the server using the client directly:
 
 ```python
-from parquet_mcp_server.client import convert_to_duckdb, embed_parquet, get_parquet_info, convert_to_postgres
+from parquet_mcp_server.client import (
+    convert_to_duckdb, 
+    embed_parquet, 
+    get_parquet_info, 
+    convert_to_postgres,
+    process_markdown_file  # New markdown processing function
+)
 
 # Test DuckDB conversion
 result = convert_to_duckdb(
@@ -185,6 +210,12 @@ result = get_parquet_info("input.parquet")
 result = convert_to_postgres(
     parquet_path="input.parquet",
     table_name="my_table"
+)
+
+# Test markdown processing
+result = process_markdown_file(
+    file_path="input.md",
+    output_path="output.parquet"
 )
 ```
 
@@ -230,3 +261,9 @@ Each embedding vector is stored in the Parquet file as a NumPy array in the spec
 The DuckDB conversion tool returns a success message with the path to the created database file or an error message if the conversion fails.
 
 The PostgreSQL conversion tool returns a success message indicating whether a new table was created or data was appended to an existing table.
+
+The markdown chunking tool processes markdown files into chunks and saves them as a Parquet file with the following columns:
+- `text`: The text content of each chunk
+- `metadata`: Additional metadata about the chunk (e.g., headers, section info)
+
+The tool returns a success message with the path to the created Parquet file or an error message if the processing fails.
