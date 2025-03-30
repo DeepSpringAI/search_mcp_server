@@ -42,7 +42,12 @@ async def main():
             # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column and also with batch size 2"})
             # agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet'"})
             # agent_response = await agent.ainvoke({"messages": "Please convert the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' to DuckDB format and save it in '/home/agent/workspace/parquet_mcp_server/db_output'"})
-            # agent_response = await agent.ainvoke({"messages": "Please process the markdown file '/home/agent/workspace/parquet_mcp_server/README.md' and save the chunks to '/home/agent/workspace/parquet_mcp_server/output/readme_chunks.parquet'"})
+            agent_response = await agent.ainvoke({"messages": """Please process the markdown file '/home/agent/workspace/parquet_mcp_server/temp/README.md' and save the chunks to '/home/agent/workspace/parquet_mcp_server/temp/README.parquet'
+            and then give me some information about the parquet file
+            and them embed the column 'text' in the parquet file and save the output to '/home/agent/workspace/parquet_mcp_server/temp/README_embeded.parquet with batch size 5'
+            then please convert the parquet file to duckdb format and save it in '/home/agent/workspace/parquet_mcp_server/temp/README.duckdb'
+            """})
+
 
             # print(agent_response)
             # Loop over the responses and print them
