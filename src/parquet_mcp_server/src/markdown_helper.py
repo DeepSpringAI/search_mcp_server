@@ -82,9 +82,16 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
         if not os.path.exists(file_path):
             return False, f"File not found: {file_path}"
             
+        # Create output directory if it doesn't exist
+        if output_path:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
         # Read markdown content
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+        
+        if not content.strip():
+            return False, f"File is empty: {file_path}"
         
         # Convert markdown to HTML
         html = markdown.markdown(content)
@@ -92,7 +99,12 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
         
         # Process paragraphs and list items
         chunks_data = []
-        for element in soup.find_all(['p', 'li']):
+        elements = soup.find_all(['p', 'li'])
+        
+        if not elements:
+            return False, f"No processable content found in file: {file_path}"
+            
+        for element in elements:
             # Extract text and links
             text, links = extract_text_and_links(element)
             
@@ -121,22 +133,31 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
                 
                 # Write to parquet in batches to save memory
                 if len(chunks_data) >= 1000 and output_path:
-                    df = pd.DataFrame(chunks_data)
-                    if os.path.exists(output_path):
-                        df.to_parquet(output_path, index=False, append=True)
-                    else:
-                        df.to_parquet(output_path, index=False)
-                    chunks_data = []  # Clear the buffer
+                    try:
+                        df = pd.DataFrame(chunks_data)
+                        if os.path.exists(output_path):
+                            df.to_parquet(output_path, index=False, append=True)
+                        else:
+                            df.to_parquet(output_path, index=False)
+                        chunks_data = []  # Clear the buffer
+                    except Exception as e:
+                        return False, f"Error writing to parquet file: {str(e)}"
         
         # Write any remaining chunks
         if chunks_data and output_path:
-            df = pd.DataFrame(chunks_data)
-            if os.path.exists(output_path):
-                df.to_parquet(output_path, index=False, append=True)
-            else:
-                df.to_parquet(output_path, index=False)
+            try:
+                df = pd.DataFrame(chunks_data)
+                if os.path.exists(output_path):
+                    df.to_parquet(output_path, index=False, append=True)
+                else:
+                    df.to_parquet(output_path, index=False)
+            except Exception as e:
+                return False, f"Error writing final chunks to parquet file: {str(e)}"
             
-        return True, f"Successfully saved markdown chunks to {output_path}"
+        if not chunks_data:
+            return False, f"No valid content chunks were generated from file: {file_path}"
+            
+        return True, f"Successfully saved {len(chunks_data)} markdown chunks to {output_path}"
         
     except Exception as e:
         error_msg = f"Error processing markdown file: {str(e)}"
