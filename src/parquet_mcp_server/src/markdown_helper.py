@@ -203,7 +203,7 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
             if os.path.exists(output_path):
                 os.remove(output_path)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            
+        
         # Read markdown content
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -214,6 +214,20 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
         # Convert markdown to HTML
         html = markdown.markdown(content)
         soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find user query from headers
+        user_query = None
+        headers = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        for header in headers:
+            header_text = header.get_text().strip()
+            if 'user' in header_text.lower():
+                # Get the next paragraph after this header
+                next_p = header.find_next('p')
+                if next_p:
+                    user_query = next_p.get_text().strip()
+                    # Remove this paragraph as it's the user query
+                    next_p.decompose()
+                break
         
         # Process paragraphs and list items
         chunks_data = []
@@ -250,7 +264,8 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
                     'section_header': get_section_header(element),
                     'links': [],  # Links are already included in the text
                     'is_list_item': False,
-                    'is_table': True
+                    'is_table': True,
+                    'user_query': user_query if user_query else ""
                 }
             else:
                 # Create metadata for regular text
@@ -259,7 +274,8 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
                     'section_header': get_section_header(element),
                     'links': links,
                     'is_list_item': element.name == 'li',
-                    'is_table': False
+                    'is_table': False,
+                    'user_query': user_query if user_query else ""
                 }
             
             # Process chunks immediately
