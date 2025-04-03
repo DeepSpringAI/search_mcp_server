@@ -63,9 +63,125 @@ def extract_text_and_links(element) -> tuple[str, list[str]]:
     return full_text, links
 
 def get_section_header(element) -> str:
-    """Get the nearest header above the current element."""
-    header = element.find_previous(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
-    return header.get_text() if header else ""
+    """
+    Get the full path of headers above the current element.
+    Returns headers in order from highest level to lowest, separated by ' - '.
+    
+    Args:
+        element: BeautifulSoup element
+        
+    Returns:
+        str: Path of headers separated by ' - '
+    """
+    headers = []
+    current = element
+    last_level = 100
+    print('\n')
+    # Find all headers before the current element
+    while current:
+        # Find the previous header
+        header = current.find_previous(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        if not header:
+            break
+        
+        
+        current_level = int(header.name[1])
+        if current_level < last_level:
+            # print(f"Level: {header.name[1]}, Text: {header.get_text().strip()}")
+            # Add header text to the list
+            headers.append(header.get_text().strip())
+            last_level = current_level
+        # Move to the header element to find its parent headers
+        current = header
+    
+    # Reverse to get highest level first
+    # headers.reverse()
+    
+    # Join headers with separator
+    return ' - '.join(headers) if headers else ""
+
+def process_table(table_element) -> str:
+    """
+    Convert a markdown table into text-based information.
+    
+    Args:
+        table_element: BeautifulSoup table element
+        
+    Returns:
+        str: Text representation of the table
+    """
+    rows = []
+    headers = []
+    
+    # Get headers
+    header_row = table_element.find('tr')
+    if header_row:
+        headers = [th.get_text().strip() for th in header_row.find_all(['th', 'td'])]
+    
+    # Process each row
+    for row in table_element.find_all('tr')[1:]:  # Skip header row
+        cells = row.find_all(['td', 'th'])
+        row_data = {}
+        
+        for i, cell in enumerate(cells):
+            header = headers[i] if i < len(headers) else f"Column {i+1}"
+            cell_text = cell.get_text().strip()
+            # Extract link if present
+            link = cell.find('a')
+            if link and link.get('href'):
+                cell_text = f"{cell_text} ({link.get('href')})"
+            row_data[header] = cell_text
+        
+        # Create text representation of the row
+        row_text = ", ".join([f"{k}: {v}" for k, v in row_data.items()])
+        rows.append(row_text)
+    
+    return "\n".join(rows)
+
+def parse_markdown_table(text: str) -> tuple[bool, list[dict]]:
+    """
+    Parse a markdown table from text.
+    
+    Args:
+        text (str): Text content that might contain a markdown table
+        
+    Returns:
+        tuple[bool, list[dict]]: (is_table, list of row dictionaries)
+    """
+    lines = text.strip().split('\n')
+    if len(lines) < 3:  # Need at least header, separator, and one row
+        return False, []
+        
+    # Check if it's a table by looking for the separator line
+    separator_line = lines[1]
+    if not all(c in '|:-' for c in separator_line):
+        return False, []
+        
+    # Extract headers
+    headers = [h.strip() for h in lines[0].split('|')[1:-1]]
+    
+    # Process rows
+    rows = []
+    for line in lines[2:]:
+        if not line.strip():
+            continue
+        cells = [c.strip() for c in line.split('|')[1:-1]]
+        if len(cells) != len(headers):
+            continue
+            
+        row_data = {}
+        for i, cell in enumerate(cells):
+            # Extract link if present
+            link_match = re.search(r'\[([^\]]+)\]\(([^)]+)\)', cell)
+            if link_match:
+                text = link_match.group(1)
+                url = link_match.group(2)
+                cell = f"{text} ({url})"
+            row_data[headers[i]] = cell
+            
+        rows.append(row_data)
+    
+    return True, rows
 
 def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool, list[dict] | str]:
     """
@@ -82,8 +198,10 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
         if not os.path.exists(file_path):
             return False, f"File not found: {file_path}"
             
-        # Create output directory if it doesn't exist
+        # Delete existing file and create output directory
         if output_path:
+            if os.path.exists(output_path):
+                os.remove(output_path)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
         # Read markdown content
@@ -111,20 +229,41 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
             # Skip empty paragraphs
             if not text:
                 continue
-            
-            # Get section header
-            section = get_section_header(element)
-            
-            # Create metadata object
-            metadata = {
-                'filename': os.path.basename(file_path),
-                'section_header': section,
-                'links': links,
-                'is_list_item': element.name == 'li'
-            }
+                
+            # Check if this paragraph should be deleted
+            if text.strip() == "```markdown":
+                continue
+                
+            # Check if this is a markdown table
+            is_table, table_rows = parse_markdown_table(text)
+            if is_table:
+                # Convert table rows to text
+                table_text = []
+                for row in table_rows:
+                    row_text = ", ".join([f"{k}: {v}" for k, v in row.items()])
+                    table_text.append(row_text)
+                text = "\n".join(table_text)
+                
+                # Create metadata for table
+                metadata = {
+                    'filename': os.path.basename(file_path),
+                    'section_header': get_section_header(element),
+                    'links': [],  # Links are already included in the text
+                    'is_list_item': False,
+                    'is_table': True
+                }
+            else:
+                # Create metadata for regular text
+                metadata = {
+                    'filename': os.path.basename(file_path),
+                    'section_header': get_section_header(element),
+                    'links': links,
+                    'is_list_item': element.name == 'li',
+                    'is_table': False
+                }
             
             # Process chunks immediately
-            text_chunks = chunk_text(text, chunk_size=100)  # Increased chunk size to reduce number of chunks
+            text_chunks = chunk_text(text, chunk_size=100)
             for chunk in text_chunks:
                 chunks_data.append({
                     'text': chunk,
@@ -162,12 +301,12 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
     except Exception as e:
         error_msg = f"Error processing markdown file: {str(e)}"
         logging.error(error_msg)
-        return False, error_msg 
+        return False, error_msg
 
 if __name__ == "__main__":
     # Test processing of README.md
-    readme_path = "/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/README.md"
-    output_path = "readme_processed.parquet"
+    readme_path = "/home/agent/workspace/parquet_mcp_server/temp/search_results_20250330_095329.md"
+    output_path = "/home/agent/workspace/parquet_mcp_server/temp/search_results_20250330_095329.parquet"
     
     print(process_markdown_file(readme_path, output_path))
     
