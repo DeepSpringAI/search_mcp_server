@@ -76,7 +76,6 @@ def get_section_header(element) -> str:
     headers = []
     current = element
     last_level = 100
-    print('\n')
     # Find all headers before the current element
     while current:
         # Find the previous header
@@ -84,18 +83,13 @@ def get_section_header(element) -> str:
         if not header:
             break
         
-        
         current_level = int(header.name[1])
         if current_level < last_level:
-            # print(f"Level: {header.name[1]}, Text: {header.get_text().strip()}")
             # Add header text to the list
             headers.append(header.get_text().strip())
             last_level = current_level
         # Move to the header element to find its parent headers
         current = header
-    
-    # Reverse to get highest level first
-    # headers.reverse()
     
     # Join headers with separator
     return ' - '.join(headers) if headers else ""
@@ -251,23 +245,55 @@ def process_markdown_file(file_path: str, output_path: str = None) -> tuple[bool
             # Check if this is a markdown table
             is_table, table_rows = parse_markdown_table(text)
             if is_table:
-                # Convert table rows to text
-                table_text = []
-                for row in table_rows:
-                    row_text = ", ".join([f"{k}: {v}" for k, v in row.items()])
-                    table_text.append(row_text)
-                text = "\n".join(table_text)
+                # Get the first header from section_header
+                first_header = get_section_header(element).split(' - ')[0] if get_section_header(element) else ""
                 
-                # Create metadata for table
-                metadata = {
-                    'filename': os.path.basename(file_path),
-                    'section_header': get_section_header(element),
-                    'links': [],  # Links are already included in the text
-                    'is_list_item': False,
-                    'is_table': True,
-                    'user_query': user_query if user_query else ""
-                }
+                # Process each table row separately
+                for row in table_rows:
+                    # Convert row to text
+                    row_text = ", ".join([f"{k}: {v}" for k, v in row.items()])
+                    
+                    # Add first header to the beginning of the text
+                    if first_header:
+                        row_text = f"{first_header}: {row_text}"
+                    
+                    # Create metadata for table row
+                    row_metadata = {
+                        'filename': os.path.basename(file_path),
+                        'section_header': get_section_header(element),
+                        'links': [],  # Links are already included in the text
+                        'is_list_item': False,
+                        'is_table': True,
+                        'user_query': user_query if user_query else ""
+                    }
+                    
+                    # Process chunks for this row
+                    text_chunks = chunk_text(row_text, chunk_size=100)
+                    for chunk in text_chunks:
+                        chunks_data.append({
+                            'text': chunk,
+                            'metadata': json.dumps(row_metadata)
+                        })
+                        
+                        # Write to parquet in batches to save memory
+                        if len(chunks_data) >= 1000 and output_path:
+                            try:
+                                df = pd.DataFrame(chunks_data)
+                                if os.path.exists(output_path):
+                                    df.to_parquet(output_path, index=False, append=True)
+                                else:
+                                    df.to_parquet(output_path, index=False)
+                                chunks_data = []  # Clear the buffer
+                            except Exception as e:
+                                return False, f"Error writing to parquet file: {str(e)}"
             else:
+                # Get the first header from section_header
+                first_header = get_section_header(element).split(' - ')[0] if get_section_header(element) else ""
+                
+                # Add first header to the beginning of the text
+                if first_header:
+                    text = f"{first_header}: {text}"
+                
                 # Create metadata for regular text
                 metadata = {
                     'filename': os.path.basename(file_path),
