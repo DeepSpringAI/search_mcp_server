@@ -93,7 +93,7 @@ def search_web(query, page=1):
         "q": query,
         "api_key": api_key,
         "page": page,
-        "num": 1
+        "num": 3
     }
     
     try:
