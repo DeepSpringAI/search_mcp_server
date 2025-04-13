@@ -1,20 +1,14 @@
 # parquet_mcp_server
 [![smithery badge](https://smithery.ai/badge/@DeepSpringAI/parquet_mcp_server)](https://smithery.ai/server/@DeepSpringAI/parquet_mcp_server)
 
-A powerful MCP (Model Control Protocol) server that provides tools for manipulating and analyzing Parquet files. This server is designed to work with Claude Desktop and offers five main functionalities:
+A powerful MCP (Model Control Protocol) server that provides tools for performing web searches and finding similar content. This server is designed to work with Claude Desktop and offers two main functionalities:
 
-1. **Text Embedding Generation**: Convert text columns in Parquet files into vector embeddings using Ollama models
-2. **Parquet File Analysis**: Extract detailed information about Parquet files including schema, row count, and file size
-3. **DuckDB Integration**: Convert Parquet files to DuckDB databases for efficient querying and analysis
-4. **PostgreSQL Integration**: Convert Parquet files to PostgreSQL tables with pgvector support for vector similarity search
-5. **Markdown Processing**: Convert markdown files into chunked text with metadata, preserving document structure and links
+1. **Web Search**: Perform a web search and scrape results
+2. **Similarity Search**: Extract relevant information from previous searches
 
 This server is particularly useful for:
-- Data scientists working with large Parquet datasets
-- Applications requiring vector embeddings for text data
-- Projects needing to analyze or convert Parquet files
-- Workflows that benefit from DuckDB's fast querying capabilities
-- Applications requiring vector similarity search with PostgreSQL and pgvector
+- Applications requiring web search capabilities
+- Projects needing to find similar content based on search queries
 
 ## Installation
 
@@ -52,16 +46,14 @@ uv pip install -e .
 Create a `.env` file with the following variables:
 
 ```bash
-EMBEDDING_URL=  # URL for the embedding service
-OLLAMA_URL=    # URL for Ollama server
-EMBEDDING_MODEL=nomic-embed-text  # Model to use for generating embeddings
-
-# PostgreSQL Configuration
-POSTGRES_DB=your_database_name
-POSTGRES_USER=your_username
-POSTGRES_PASSWORD=your_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
+EMBEDDING_URL=http://sample-url.com/api/embed  # URL for the embedding service
+OLLAMA_URL=http://sample-url.com/  # URL for Ollama server
+EMBEDDING_MODEL=sample-model  # Model to use for generating embeddings
+SEARCHAPI_API_KEY=your_searchapi_api_key
+FIRECRAWL_API_KEY=your_firecrawl_api_key
+VOYAGE_API_KEY=your_voyage_api_key
+AZURE_OPENAI_ENDPOINT=http://sample-url.com/azure_openai
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 ```
 
 ## Usage with Claude Desktop
@@ -86,68 +78,30 @@ Add this to your Claude Desktop configuration file (`claude_desktop_config.json`
 
 ## Available Tools
 
-The server provides five main tools:
+The server provides two main tools:
 
-1. **Embed Parquet**: Adds embeddings to a specific column in a Parquet file
+1. **Search Web**: Perform a web search and scrape results
    - Required parameters:
-     - `input_path`: Path to input Parquet file
-     - `output_path`: Path to save the output
-     - `column_name`: Column containing text to embed
-     - `embedding_column`: Name for the new embedding column
-     - `batch_size`: Number of texts to process in each batch (for better performance)
-
-2. **Parquet Information**: Get details about a Parquet file
-   - Required parameters:
-     - `file_path`: Path to the Parquet file to analyze
-
-3. **Convert to DuckDB**: Convert a Parquet file to a DuckDB database
-   - Required parameters:
-     - `parquet_path`: Path to the input Parquet file
+     - `queries`: List of search queries
    - Optional parameters:
-     - `output_dir`: Directory to save the DuckDB database (defaults to same directory as input file)
+     - `page_number`: Page number for the search results (defaults to 1)
 
-4. **Convert to PostgreSQL**: Convert a Parquet file to a PostgreSQL table with pgvector support
+2. **Extract Info from Search**: Extract relevant information from previous searches
    - Required parameters:
-     - `parquet_path`: Path to the input Parquet file
-     - `table_name`: Name of the PostgreSQL table to create or append to
-
-5. **Process Markdown**: Convert markdown files into structured chunks with metadata
-   - Required parameters:
-     - `file_path`: Path to the markdown file to process
-     - `output_path`: Path to save the output parquet file
-   - Features:
-     - Preserves document structure and links
-     - Extracts section headers and metadata
-     - Memory-optimized for large files
-     - Configurable chunk size and overlap
+     - `queries`: List of search queries to merge
 
 ## Example Prompts
 
 Here are some example prompts you can use with the agent:
 
-### For Embedding:
+### For Web Search:
 ```
-"Please embed the column 'text' in the parquet file '/path/to/input.parquet' and save the output to '/path/to/output.parquet'. Use 'embeddings' as the final column name and a batch size of 2"
-```
-
-### For Parquet Information:
-```
-"Please give me some information about the parquet file '/path/to/input.parquet'"
+"Please perform a web search for 'macbook' and 'laptop' and scrape the results from page 1"
 ```
 
-### For DuckDB Conversion:
+### For Extracting Info from Search:
 ```
-"Please convert the parquet file '/path/to/input.parquet' to DuckDB format and save it in '/path/to/output/directory'"
-```
-
-### For PostgreSQL Conversion:
-```
-"Please convert the parquet file '/path/to/input.parquet' to a PostgreSQL table named 'my_table'"
-```
-
-### For Markdown Processing:
-```
-"Please process the markdown file '/path/to/input.md' and save the chunks to '/path/to/output.parquet'"
+"Please extract relevant information from the previous searches for 'macbook'"
 ```
 
 ## Testing the MCP Server
@@ -161,62 +115,26 @@ python src/tests/run_tests.py
 Or run individual tests:
 
 ```bash
-# Test embedding functionality
-python src/tests/test_embedding.py
+# Test Web Search
+python src/tests/test_search_web.py
 
-# Test parquet information tool
-python src/tests/test_parquet_info.py
-
-# Test DuckDB conversion
-python src/tests/test_duckdb_conversion.py
-
-# Test PostgreSQL conversion
-python src/tests/test_postgres_conversion.py
-
-# Test Markdown processing
-python src/tests/test_markdown_processing.py
+# Test Extract Info from Search
+python src/tests/test_extract_info_from_search.py
 ```
 
 You can also test the server using the client directly:
 
 ```python
 from parquet_mcp_server.client import (
-    convert_to_duckdb, 
-    embed_parquet, 
-    get_parquet_info, 
-    convert_to_postgres,
-    process_markdown_file  # New markdown processing function
+    perform_search_and_scrape,  # New web search function
+    find_similar_chunks  # New extract info function
 )
 
-# Test DuckDB conversion
-result = convert_to_duckdb(
-    parquet_path="input.parquet",
-    output_dir="db_output"
-)
+# Perform a web search
+perform_search_and_scrape(["macbook", "laptop"], page_number=1)
 
-# Test embedding
-result = embed_parquet(
-    input_path="input.parquet",
-    output_path="output.parquet",
-    column_name="text",
-    embedding_column="embeddings",
-    batch_size=2
-)
-
-# Test parquet information
-result = get_parquet_info("input.parquet")
-
-# Test PostgreSQL conversion
-result = convert_to_postgres(
-    parquet_path="input.parquet",
-    table_name="my_table"
-)
-
-# Test markdown processing
-result = process_markdown_file(
-    file_path="input.md",
-    output_path="output.parquet"
-)
+# Extract information from the search results
+find_similar_chunks(["macbook"])
 ```
 
 ### Troubleshooting
@@ -235,35 +153,3 @@ result = process_markdown_file(
    - The PostgreSQL server is running and accessible
    - You have the necessary permissions to create/modify tables
    - The pgvector extension is installed in your database
-
-### API Response Format
-
-The embeddings are returned in the following format:
-
-```json
-{
-    "object": "list",
-    "data": [{
-        "object": "embedding",
-        "embedding": [0.123, 0.456, ...],
-        "index": 0
-    }],
-    "model": "llama2",
-    "usage": {
-        "prompt_tokens": 4,
-        "total_tokens": 4
-    }
-}
-```
-
-Each embedding vector is stored in the Parquet file as a NumPy array in the specified embedding column.
-
-The DuckDB conversion tool returns a success message with the path to the created database file or an error message if the conversion fails.
-
-The PostgreSQL conversion tool returns a success message indicating whether a new table was created or data was appended to an existing table.
-
-The markdown chunking tool processes markdown files into chunks and saves them as a Parquet file with the following columns:
-- `text`: The text content of each chunk
-- `metadata`: Additional metadata about the chunk (e.g., headers, section info)
-
-The tool returns a success message with the path to the created Parquet file or an error message if the processing fails.

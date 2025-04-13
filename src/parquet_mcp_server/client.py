@@ -39,7 +39,20 @@ openai_model = AzureChatOpenAI(
 
 server_params = StdioServerParameters(
     command="uv",
-    args=["--directory", "./src/parquet_mcp_server", "run", "main.py"],
+    args=[
+        "--directory", os.getenv("SERVER_DIRECTORY", "./src/parquet_mcp_server"),
+        "run", os.getenv("MAIN_SCRIPT", "main.py")
+    ],
+    env={
+        "EMBEDDING_URL": os.getenv("EMBEDDING_URL"),
+        "OLLAMA_URL": os.getenv("OLLAMA_URL"),
+        "EMBEDDING_MODEL": os.getenv("EMBEDDING_MODEL"),
+        "SEARCHAPI_API_KEY": os.getenv("SEARCHAPI_API_KEY"),
+        "FIRECRAWL_API_KEY": os.getenv("FIRECRAWL_API_KEY"),
+        "VOYAGE_API_KEY": os.getenv("VOYAGE_API_KEY"),
+        "AZURE_OPENAI_ENDPOINT": os.getenv("AZURE_OPENAI_ENDPOINT"),
+        "AZURE_OPENAI_API_KEY": os.getenv("AZURE_OPENAI_API_KEY"),
+    }
 )
 
 async def main():
