@@ -10,6 +10,8 @@ import os
 import time
 from firecrawl import FirecrawlApp
 from datetime import datetime  # Import datetime module
+import numpy as np
+
 
 # Set up logging
 logging.basicConfig(
@@ -275,17 +277,73 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
                             'embed': embed
                         })
 
-    # Save all results to a JSON file in a temporary directory
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=tempfile.gettempdir(), mode='w', encoding='utf-8') as temp_file:
-        json.dump(all_results, temp_file, ensure_ascii=False, indent=4)
-        temp_file_path = temp_file.name
+    # Save all results to a JSON file in the current directory
+    output_path = './output.json'
+    with open(output_path, 'w', encoding='utf-8') as output_file:
+        json.dump(all_results, output_file, ensure_ascii=False, indent=4)
     
-    logging.info(f"All results saved to {temp_file_path}")
+    logging.info(f"All results saved to {output_path}")
     
-    return True, f"Search and scraping completed successfully. The searching results is saved as json file to {temp_file_path}"
+    return True, f"Search and scraping completed successfully. Now ask user about what information wants to know exactly"
+
+def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
+    """
+    Get information from the results of a previous search.
+    
+    Args:
+        queries (list[str]): List of search queries to merge.
+    
+    Returns:
+        tuple[bool, str]: (success status, message with similar text chunks)
+    """
+    similarity_threshold = 0.55
+    json_path = './output.json'  # Always use this path
+
+    # Merge queries with 'and'
+    merged_query = ' and '.join(queries)
+
+    # Load the JSON file containing embeddings
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        logging.error(f"Error loading JSON file: {str(e)}")
+        return False, f"Error loading JSON file: {str(e)}"
+
+    # Extract embeddings and texts
+    texts = [item['text'] for item in data]
+    embeddings = np.array([item['embed'] for item in data])
+
+    # Get query embedding
+    query_embeddings = get_embedding([merged_query])
+    if not query_embeddings:
+        logging.error("Failed to generate query embedding")
+        return False, "Failed to generate query embedding"
+
+    query_embedding = np.array(query_embeddings[0])
+
+    # Calculate cosine similarity
+    similarities = np.dot(embeddings, query_embedding) / (
+        np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_embedding)
+    )
+
+    # Get indices of chunks with similarity above threshold
+    high_similarity_indices = np.where(similarities > similarity_threshold)[0]
+
+    # Prepare the output
+    output_texts = [texts[i] for i in high_similarity_indices]
+    # output_message = f"Give me information '{merged_query}' and from the following extracted chunked information. dont add more details\n\n\n\n"
+    output_message = "\n--------------------\n".join(output_texts)
+
+    return True, output_message
 
 if __name__ == "__main__":
     # Example usage
-    search_queries = ["macbook"]  # Example queries
-    success, message = perform_search_and_scrape(search_queries)
+    # search_queries = ["macbook"]  # Example queries
+    # success, message = perform_search_and_scrape(search_queries)
+    # logging.info(message)
+
+    json_path = "/tmp/tmpc1r0zpzj.json"
+    queries = ["macbook"]
+    success, message = find_similar_chunks(queries)
     logging.info(message)
