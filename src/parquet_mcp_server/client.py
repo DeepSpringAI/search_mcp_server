@@ -9,9 +9,20 @@ from dotenv import load_dotenv
 import asyncio
 import json
 import os 
+import logging
 
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
 
 # Initialize Ollama LangChain model
 model = ChatOllama(
