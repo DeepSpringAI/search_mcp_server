@@ -18,6 +18,9 @@ dependencies = [
     "psycopg2",
     "markdown",
     "beautifulsoup4",
+    "clear>=2.0.0",
+    "firecrawl-py>=1.16.0",
+    "langchain-mcp-adapters>=0.0.7",
 ]
 requires-python = ">=3.10"
 

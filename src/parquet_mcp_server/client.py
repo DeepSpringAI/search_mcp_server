@@ -42,11 +42,12 @@ async def main():
             # agent_response = await agent.ainvoke({"messages": "please embed the column 'text' in the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' and save the output to '/home/agent/workspace/parquet_mcp_server/src/parquet_mcp_server/output.parquet'. please use embedding as final column and also with batch size 2"})
             # agent_response = await agent.ainvoke({"messages": "Please give me some information about the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet'"})
             # agent_response = await agent.ainvoke({"messages": "Please convert the parquet file '/home/agent/workspace/parquet_mcp_server/input.parquet' to DuckDB format and save it in '/home/agent/workspace/parquet_mcp_server/db_output'"})
-            agent_response = await agent.ainvoke({"messages": """Please process the markdown file '/home/agent/workspace/parquet_mcp_server/temp/README.md' and save the chunks to '/home/agent/workspace/parquet_mcp_server/temp/README.parquet'
-            and then give me some information about the parquet file
-            and them embed the column 'text' in the parquet file and save the output to '/home/agent/workspace/parquet_mcp_server/temp/README_embeded.parquet with batch size 5'
-            then please convert the parquet file to duckdb format and save it in '/home/agent/workspace/parquet_mcp_server/temp/README.duckdb'
-            """})
+            # agent_response = await agent.ainvoke({"messages": """Please process the markdown file '/home/agent/workspace/parquet_mcp_server/temp/README.md' and save the chunks to '/home/agent/workspace/parquet_mcp_server/temp/README.parquet'
+            # and then give me some information about the parquet file
+            # and them embed the column 'text' in the parquet file and save the output to '/home/agent/workspace/parquet_mcp_server/temp/README_embeded.parquet with batch size 5'
+            # then please convert the parquet file to duckdb format and save it in '/home/agent/workspace/parquet_mcp_server/temp/README.duckdb'
+            # """})
+            agent_response = await agent.ainvoke({"messages": "Please perform a search with the followting things: macbook, آیفون, لپ تاپ"})
 
 
             # print(agent_response)
@@ -219,6 +220,53 @@ def chunk_markdown(input_path: str, output_path: str) -> tuple[bool, str]:
         tuple[bool, str]: Success status and message with output location
     """
     return asyncio.run(chunk_markdown_async(input_path, output_path))
+
+
+async def perform_search_and_scrape_async(queries: list[str], page_number: int = 1) -> tuple[bool, str]:
+    """
+    Process a markdown file into chunks and save as parquet
+    
+    Args:
+        queries (list[str]): List of search queries
+        page_number (int, optional): Page number for the search results
+    
+    Returns:
+        tuple[bool, str]: Success status and message with output location
+    """
+    server_params = StdioServerParameters(
+        command="uv",
+        args=["--directory", "./src/parquet_mcp_server", "run", "main.py"],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+
+            # Call the process-markdown tool
+            result = await session.call_tool(
+                "search-web",
+                {
+                    "queries": queries,
+                    "page_number": page_number
+                }
+            )
+            return result
+            
+
+def perform_search_and_scrape(queries: list[str], page_number: int = 1) -> tuple[bool, str]:
+    """
+    Perform a web search and scrape results (synchronous version)
+    
+    Args:
+        queries (list[str]): List of search queries
+        page_number (int, optional): Page number for the search results
+    
+    Returns:
+        tuple[bool, str]: Success status and message with output location
+    """
+    return asyncio.run(perform_search_and_scrape_async(queries, page_number))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

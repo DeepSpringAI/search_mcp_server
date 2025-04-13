@@ -18,6 +18,7 @@ from src.parquet_helper import get_parquet_info
 from src.duckdb_helper import convert_parquet_to_duckdb
 from src.postgres_helper import convert_parquet_to_postgres
 from parquet_mcp_server.src.markdown_helper import process_markdown_file
+from parquet_mcp_server.src.search_helper import perform_search_and_scrape
 
 # Set up logging
 logging.basicConfig(
@@ -57,10 +58,31 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "batch_size": {
                         "type": "int",
-                        "description": "batch size for the embedding"
+                        "description": "Batch size for the embedding"
                     }
                 },
                 "required": ["input_path", "output_path", "column_name", "embedding_column", "batch_size"]
+            }
+        ),
+        types.Tool(
+            name="search-web",
+            description="Perform a web search and scrape results",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "queries": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of search queries"
+                    },
+                    "page_number": {
+                        "type": "integer",
+                        "description": "Page number for the search results"
+                    }
+                },
+                "required": ["queries"]
             }
         ),
         types.Tool(
@@ -152,6 +174,16 @@ async def handle_call_tool(
             raise ValueError("Missing required arguments")
 
         success, message = process_parquet_file(input_path, output_path, column_name, embedding_column, batch_size)
+        return [types.TextContent(type="text", text=message)]
+
+    elif name == "search-web":
+        queries = arguments.get("queries")
+        page_number = arguments.get("page_number", 1)  # Default to page 1 if not provided
+        
+        if not queries:
+            raise ValueError("Missing queries argument")
+
+        success, message = perform_search_and_scrape(queries, page_number)
         return [types.TextContent(type="text", text=message)]
 
     elif name == "parquet-information":
