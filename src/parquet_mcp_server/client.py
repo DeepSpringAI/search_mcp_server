@@ -28,7 +28,6 @@ logging.basicConfig(
 model = ChatOllama(
     base_url=os.getenv("OLLAMA_URL"),
     model="llama3.1:8b",
-    temperature=0,
 )
 
 openai_model = AzureChatOpenAI(
@@ -93,7 +92,7 @@ async def main():
                             print(f"{role} (tool output preview): {msg.content[:20]}...")  # Preview
 
                     # 🧠 Use Ollama LLM directly for 'extract-info-from-search'
-                    if tool_result and tool_function_name == "extract-info-from-search":
+                    if tool_result:
                         prompt_content = f"This is the user input query: {user_input}\nand this is the extracted information from the internet. please answer the user query based on these information: \n{tool_result.content}"
                         print(prompt_content)
                         print("\n--- 🧠 Using Ollama to extract info ---")

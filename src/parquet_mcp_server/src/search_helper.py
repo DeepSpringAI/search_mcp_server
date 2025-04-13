@@ -35,7 +35,7 @@ def chunk_text(text: str, chunk_size: int = 500) -> list:
     """
     return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
-def get_embedding(texts: list, url='http://50.173.192.52:41502/api/embed') -> list:
+def get_embedding(texts: list) -> list:
     """
     Fetch embeddings for a batch of texts from the embedding server.
 
@@ -53,7 +53,7 @@ def get_embedding(texts: list, url='http://50.173.192.52:41502/api/embed') -> li
     }
 
     try:
-        response = requests.post(url, json=payload, verify=False)
+        response = requests.post(os.getenv('EMBEDDING_URL'), json=payload, verify=False)
         if response.status_code == 200:
             result = response.json()
             if 'embeddings' in result:
@@ -283,6 +283,9 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
         json.dump(all_results, output_file, ensure_ascii=False, indent=4)
     
     logging.info(f"All results saved to {output_path}")
+
+
+    return find_similar_chunks(search_queries) 
     
     return True, f"Search and scraping completed successfully. Now ask user about what information wants to know exactly"
 
