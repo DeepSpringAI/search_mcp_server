@@ -11,6 +11,9 @@ import time
 from firecrawl import FirecrawlApp
 from datetime import datetime  # Import datetime module
 import numpy as np
+from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage
+import asyncio
 
 
 # Set up logging
@@ -21,6 +24,14 @@ logging.basicConfig(
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+# Initialize Ollama LangChain model
+ollama_model = ChatOllama(
+    base_url=os.getenv("OLLAMA_URL"),
+    model="llama3.1:8b",
+)
+
 
 def chunk_text(text: str, chunk_size: int = 500) -> list:
     """
@@ -287,7 +298,28 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
 
     return find_similar_chunks(search_queries) 
     
-    return True, f"Search and scraping completed successfully. Now ask user about what information wants to know exactly"
+
+def process_chunks_with_ollama(chunks, user_query):
+    """
+    Process each chunk with the Ollama model and combine the results.
+    
+    Args:
+        chunks (list): List of text chunks to process
+        user_query (str): The user's query
+    
+    Returns:
+        str: Combined response from the model
+    """
+    chunk_responses = []
+
+    for chunk in chunks:
+        prompt_content = f"This is the user input query: {user_query}\nand this is the extracted information from the internet. please extract all the information related to the user query based on these information: \n{chunk}"
+        chunk_response = ollama_model.invoke([HumanMessage(content=prompt_content)])
+        chunk_responses.append(chunk_response.content)
+
+    combined_response = " ".join(chunk_responses)
+
+    return combined_response
 
 def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     """
@@ -335,18 +367,21 @@ def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
     # Prepare the output
     output_texts = [texts[i] for i in high_similarity_indices]
-    # output_message = f"Give me information '{merged_query}' and from the following extracted chunked information. dont add more details\n\n\n\n"
     output_message = "\n--------------------\n".join(output_texts)
 
-    return True, output_message
+    # Process chunks with Ollama model
+    chunk_size = 3000
+    chunks = [output_message[i:i + chunk_size] for i in range(0, len(output_message), chunk_size)]
+    final_response = process_chunks_with_ollama(chunks, merged_query)
+
+    return True, final_response
 
 if __name__ == "__main__":
     # Example usage
-    # search_queries = ["macbook"]  # Example queries
+    # search_queries = ["آیفون ۱۶ قیمت"]  # Example queries
     # success, message = perform_search_and_scrape(search_queries)
     # logging.info(message)
 
-    json_path = "/tmp/tmpc1r0zpzj.json"
-    queries = ["macbook"]
+    queries = ["آیفون ۱۶ قیمت"]
     success, message = find_similar_chunks(queries)
     logging.info(message)

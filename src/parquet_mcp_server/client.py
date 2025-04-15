@@ -105,7 +105,7 @@ async def main():
                     if tool_result:
                         prompt_content = f"This is the user input query: {user_input}\nand this is the extracted information from the internet. please answer the user query based on these information: \n{tool_result.content}"
                         print(prompt_content)
-                        print("\n--- 🧠 Using Ollama to extract info ---")
+                        print("\n--- 🧠 Using OpenAI to extract info ---")
 
                         final_response = await openai_model.ainvoke([HumanMessage(content=prompt_content)])
 

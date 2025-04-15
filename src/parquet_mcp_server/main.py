@@ -17,8 +17,7 @@ from parquet_mcp_server.src.search_helper import perform_search_and_scrape, find
 
 # Set up logging
 logging.basicConfig(
-    filename='embedding_server.log',
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
