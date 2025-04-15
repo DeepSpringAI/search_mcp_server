@@ -13,11 +13,6 @@ import json
 import os
 import logging
 
-from src.embedding_helper import get_embedding, process_parquet_file
-from src.parquet_helper import get_parquet_info
-from src.duckdb_helper import convert_parquet_to_duckdb
-from src.postgres_helper import convert_parquet_to_postgres
-from parquet_mcp_server.src.markdown_helper import process_markdown_file
 from parquet_mcp_server.src.search_helper import perform_search_and_scrape, find_similar_chunks
 
 # Set up logging
