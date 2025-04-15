@@ -91,12 +91,18 @@ def search_web(query, page=1):
         tuple: A tuple containing (organic_results, related_searches)
             - organic_results: List of search results
             - related_searches: List of related search queries
+            
+    Raises:
+        ValueError: If API key is not found in environment variables
+        requests.exceptions.RequestException: If there's an error making the HTTP request
+        json.JSONDecodeError: If there's an error parsing the JSON response
     """
     url = "https://www.searchapi.io/api/v1/search"
     
     # Get API key from environment variables
     api_key = os.getenv("SEARCHAPI_API_KEY")
     if not api_key:
+        logging.error("API key not found in environment variables")
         raise ValueError("API key not found. Please set SEARCHAPI_API_KEY in your .env file.")
     
     params = {
@@ -108,23 +114,23 @@ def search_web(query, page=1):
     }
     
     try:
+        logging.info(f"Making search request for query: {query}")
         response = requests.get(url, params=params)
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        response.raise_for_status()
         
         data = response.json()
-        # Extract organic results and related searches
         organic_results = data.get("organic_results", [])
         related_searches = data.get("related_searches", [])
         
-        logging.info(f'Search successful for query: {query}')
+        logging.info(f"Search successful for query: {query}")
         return organic_results, related_searches
     
     except requests.exceptions.RequestException as e:
-        print(f"Error making request: {e}")
-        return [], []
+        logging.error(f"Error making search request: {str(e)}")
+        raise RuntimeError(f"Request error: {str(e)}") from e
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON response: {e}")
-        return [], [] 
+        logging.error(f"Error parsing JSON response: {str(e)}")
+        raise ValueError(f"JSON parsing error: {str(e)}") from e
 
 def get_links(markdown_content):
     """
@@ -248,7 +254,10 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
     all_results = []  # List to store all results with text and embeddings
 
     for search_query in search_queries:
-        organic_results, related_searches = search_web(search_query, page_number)
+        try:
+            organic_results, related_searches = search_web(search_query, page_number)
+        except Exception as e:
+            return False, f"Error in SearchAPI: {str(e)}"
         
         # Log the search query results
         logging.info(f"Results for query '{search_query}' retrieved.")

@@ -107,7 +107,7 @@ async def main():
                         print(prompt_content)
                         print("\n--- 🧠 Using OpenAI to extract info ---")
 
-                        final_response = await openai_model.ainvoke([HumanMessage(content=prompt_content)])
+                        final_response = await model.ainvoke([HumanMessage(content=prompt_content)])
 
                         print("\n--- ✅ Final Answer ---")
                         print("**AI (Azure OpenAI)**:", final_response.content)
