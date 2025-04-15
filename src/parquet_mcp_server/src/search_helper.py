@@ -383,6 +383,14 @@ def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     chunk_size = 3000
     chunks = [output_message[i:i + chunk_size] for i in range(0, len(output_message), chunk_size)]
     final_response = process_chunks_with_ollama(chunks, merged_query)
+    logging.info(f"final response =========== '{final_response}' retrieved.")
+    file_path = "final_response_output.txt"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(final_response)
+
+    logging.info(f"Final response saved to {file_path}")
+
+    
 
     return True, final_response
 
