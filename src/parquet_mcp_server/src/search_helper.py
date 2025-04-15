@@ -18,7 +18,7 @@ import asyncio
 
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -62,7 +62,7 @@ def get_embedding(texts: list) -> list:
         "model": model,
         "input": texts  # Pass all texts in a batch
     }
-
+    logging.info('Make Embedding')
     try:
         response = requests.post(os.getenv('EMBEDDING_URL'), json=payload, verify=False)
         if response.status_code == 200:
@@ -116,6 +116,7 @@ def search_web(query, page=1):
         organic_results = data.get("organic_results", [])
         related_searches = data.get("related_searches", [])
         
+        logging.info(f'Search successful for query: {query}')
         return organic_results, related_searches
     
     except requests.exceptions.RequestException as e:
@@ -200,7 +201,7 @@ def scrape_urls(organic_results):
         if not url:
             continue
         
-        print(f"Scraping URL {i+1}/{len(organic_results)}: {url}")
+        logging.info(f"Scraping URL {i+1}/{len(organic_results)}: {url}")
         
         try:
             # Scrape the URL
@@ -215,23 +216,20 @@ def scrape_urls(organic_results):
                     'status': scrape_status['metadata']['statusCode'],
                     'content': scrape_status['markdown']
                 }
-                print(f"Successfully scraped {url}")
+                logging.info(f"Successfully scraped {url}")
             else:
                 scrape_results[url] = {
                     'status': scrape_status['metadata']['statusCode'],
                     'error': f"Scraping failed with status: {scrape_status.status}"
                 }
-                print(f"Scraping failed with status: {scrape_status.status}")
+                logging.warning(f"Scraping failed with status: {scrape_status.status}")
             
             # Add a delay between requests to avoid rate limiting
             time.sleep(2)
             
         except Exception as e:
-            print(f"Error scraping {url}: {e}")
-            scrape_results[url] = {
-                'status': 'error',
-                'error': str(e)
-            }
+            logging.error(f"Error scraping {url}: {e}")
+            raise Exception(f"Error scraping {url}: {e}")
     
     return scrape_results 
 
@@ -258,7 +256,10 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
         # Scrape URLs and save content as markdown files
         if organic_results:
             logging.info(f"Scraping URLs from organic search results for query '{search_query}'...")
-            scrape_results = scrape_urls(organic_results)
+            try:
+                scrape_results = scrape_urls(organic_results)
+            except Exception as e:
+                return False, f"Error in Scraping {str(e)}"
         
             # Process and save markdown content for successful scrapes
             for i, (url, result) in enumerate(scrape_results.items()):
