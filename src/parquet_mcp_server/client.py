@@ -49,9 +49,6 @@ server_params = StdioServerParameters(
         "EMBEDDING_MODEL": os.getenv("EMBEDDING_MODEL"),
         "SEARCHAPI_API_KEY": os.getenv("SEARCHAPI_API_KEY"),
         "FIRECRAWL_API_KEY": os.getenv("FIRECRAWL_API_KEY"),
-        "VOYAGE_API_KEY": os.getenv("VOYAGE_API_KEY"),
-        "AZURE_OPENAI_ENDPOINT": os.getenv("AZURE_OPENAI_ENDPOINT"),
-        "AZURE_OPENAI_API_KEY": os.getenv("AZURE_OPENAI_API_KEY"),
     }
 )
 
@@ -69,7 +66,7 @@ async def main():
                 if user_input.strip().lower() == "exit":
                     print("👋 Exiting.")
                     break
-                # user_input = "قیمت ایفون ۱۶ دو از سرچ قبلی بکش بیرون"
+                # user_input = "قیمت ایفون ۱۶ از سرچ قبلی بکش بیرون"
 
                 conversation = [HumanMessage(content=user_input)]
 
