@@ -13,15 +13,6 @@ from autogen_core import CancellationToken
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
 
-import logging
-from autogen_core import TRACE_LOGGER_NAME, EVENT_LOGGER_NAME, ROOT_LOGGER_NAME
-
-# Silence all logs
-# logging.getLogger(TRACE_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
-# logging.getLogger(EVENT_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
-logging.getLogger(ROOT_LOGGER_NAME).setLevel(logging.ERROR)
-
-
 load_dotenv()
 
 # Base model for demonstration
@@ -49,10 +40,6 @@ server_params = StdioServerParams(
     ],
 )
 
-
-
-
-
 # User input function
 async def user_input_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:
     try:
@@ -61,27 +48,24 @@ async def user_input_func(prompt: str, cancellation_token: CancellationToken | N
         return "User did not provide any input within the time limit."
     return response["output"] if response else "User did not provide any input."
 
-
-
 # Recreate team dynamically based on user-selected mode
 async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
     mode = cl.user_session.get("mode", "scratch")
     tools = await mcp_server_tools(server_params)
 
     if mode == "scratch":
-        print("==================================")
         fetcher_system = """
         You are a web search assistant. 
         Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
         Pass user queries to mcp_server and get results.
-        Pass "ALL" information to summarizer.
+        Return "ALL" information to summarizer.
         """
     else:  # "previous"
         fetcher_system = """
         You are a data retriever. 
         Retrieve results only from previously stored searches.
         Do not generate new search queries.
-        Pass "ALL" information to summarizer.
+        Return "ALL" information to summarizer.
         """
 
     fetcher = AssistantAgent(
@@ -117,7 +101,7 @@ async def run_agent_stream(user_message: str):
 
     team = await recreate_team_based_on_mode()
     cl.user_session.set("team", team)  # optionally update session
-    print(team,"=0000000000000000000")
+
     streaming_response: cl.Message | None = None
 
     try:

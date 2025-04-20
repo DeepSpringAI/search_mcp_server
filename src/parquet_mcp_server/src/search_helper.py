@@ -228,7 +228,7 @@ def scrape_urls(organic_results):
                     'status': scrape_status['metadata']['statusCode'],
                     'error': f"Scraping failed with status: {scrape_status.status}"
                 }
-                logging.warning(f"Scraping failed with status: {scrape_status.status}")
+                logging.info(f"Scraping failed with status: {scrape_status.status}")
             
             # Add a delay between requests to avoid rate limiting
             time.sleep(2)
@@ -396,10 +396,10 @@ def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
 if __name__ == "__main__":
     # Example usage
-    # search_queries = ["آیفون ۱۶ قیمت"]  # Example queries
-    # success, message = perform_search_and_scrape(search_queries)
-    # logging.info(message)
-
-    queries = ["آیفون ۱۶ قیمت"]
-    success, message = find_similar_chunks(queries)
+    search_queries = ["آیفون ۱۶ قیمت"]  # Example queries
+    success, message = perform_search_and_scrape(search_queries)
     logging.info(message)
+
+    # queries = ["آیفون ۱۶ قیمت"]
+    # success, message = find_similar_chunks(queries)
+    # logging.info(message)
