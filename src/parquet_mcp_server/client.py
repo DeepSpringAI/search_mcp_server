@@ -103,11 +103,11 @@ async def main():
 
                     # 🧠 Use Ollama LLM directly for 'extract-info-from-search'
                     if tool_result:
-                        prompt_content = f"This is the user input query: {user_input}\nand this is the extracted information from the internet. please answer the user query based on these information: \n{tool_result.content}"
+                        prompt_content = f"This is the user input query: {user_input}\nand this is the extracted information from the internet. Please summarize the results but mention all the information related to user query. dont forget to add the sources links: \n{tool_result.content}"
                         print(prompt_content)
                         print("\n--- 🧠 Using OpenAI to extract info ---")
 
-                        final_response = await model.ainvoke([HumanMessage(content=prompt_content)])
+                        final_response = await openai_model.ainvoke([HumanMessage(content=prompt_content)])
 
                         print("\n--- ✅ Final Answer ---")
                         print("**AI (Azure OpenAI)**:", final_response.content)

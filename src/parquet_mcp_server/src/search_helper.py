@@ -13,6 +13,7 @@ from datetime import datetime  # Import datetime module
 import numpy as np
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
+from parquet_mcp_server.client import perform_search_and_scrape_async
 import asyncio
 
 
@@ -228,7 +229,7 @@ def scrape_urls(organic_results):
                     'status': scrape_status['metadata']['statusCode'],
                     'error': f"Scraping failed with status: {scrape_status.status}"
                 }
-                logging.info(f"Scraping failed with status: {scrape_status.status}")
+                logging.warning(f"Scraping failed with status: {scrape_status.status}")
             
             # Add a delay between requests to avoid rate limiting
             time.sleep(2)
@@ -309,9 +310,9 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
     return find_similar_chunks(search_queries) 
     
 
-def process_chunks_with_ollama(chunks, user_query):
+async def process_chunks_with_ollama(chunks, user_query):
     """
-    Process each chunk with the Ollama model and combine the results.
+    Process each chunk with the Ollama model and combine the results asynchronously.
     
     Args:
         chunks (list): List of text chunks to process
@@ -320,18 +321,30 @@ def process_chunks_with_ollama(chunks, user_query):
     Returns:
         str: Combined response from the model
     """
+    logging.info(f"Starting async processing of {len(chunks)} chunks")
     chunk_responses = []
 
-    for chunk in chunks:
-        prompt_content = f"This is the user input query: {user_query}\nand this is the extracted information from the internet. please extract all the information related to the user query based on these information: \n{chunk}"
-        chunk_response = ollama_model.invoke([HumanMessage(content=prompt_content)])
-        chunk_responses.append(chunk_response.content)
+    # Create a list of coroutines for each chunk
+    async def process_chunk(chunk):
+        try:
+            prompt_content = f"This is the user input query: {user_query}\nand this is the extracted information from the internet. please extract all the information related to the user query based on these information (for each one please set the source or link of the information): \n{chunk}"
+            chunk_response = await ollama_model.ainvoke([HumanMessage(content=prompt_content)])
+            return chunk_response.content
+        except Exception as e:
+            logging.error(f"Error processing chunk: {str(e)}")
+            return ""
 
+    # Process all chunks concurrently
+    chunk_tasks = [process_chunk(chunk) for chunk in chunks]
+    chunk_responses = await asyncio.gather(*chunk_tasks)
+    
+    logging.info("Successfully processed all chunks")
     combined_response = " ".join(chunk_responses)
-
+    logging.info("Combined all responses")
+    
     return combined_response
 
-def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
+async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     """
     Get information from the results of a previous search.
     
@@ -341,29 +354,37 @@ def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     Returns:
         tuple[bool, str]: (success status, message with similar text chunks)
     """
+    logging.info(f"Starting find_similar_chunks with queries: {queries}")
     similarity_threshold = 0.55
-    json_path = './output.json'  # Always use this path
+    json_path = './output.json'
 
     # Merge queries with 'and'
     merged_query = ' and '.join(queries)
+    logging.info(f"Merged query: {merged_query}")
 
     # Load the JSON file containing embeddings
     try:
+        logging.info(f"Loading JSON file from {json_path}")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
+        logging.info(f"Successfully loaded JSON file with {len(data)} entries")
     except Exception as e:
         logging.error(f"Error loading JSON file: {str(e)}")
         return False, f"Error loading JSON file: {str(e)}"
 
     # Extract embeddings and texts
     texts = [item['text'] for item in data]
+    links = [item.get('metadata', {}).get('url', '') for item in data]
     embeddings = np.array([item['embed'] for item in data])
+    logging.info(f"Extracted {len(texts)} texts and {len(embeddings)} embeddings")
 
     # Get query embedding
+    logging.info("Generating query embedding")
     query_embeddings = get_embedding([merged_query])
     if not query_embeddings:
         logging.error("Failed to generate query embedding")
         return False, "Failed to generate query embedding"
+    logging.info("Successfully generated query embedding")
 
     query_embedding = np.array(query_embeddings[0])
 
@@ -374,32 +395,36 @@ def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
     # Get indices of chunks with similarity above threshold
     high_similarity_indices = np.where(similarities > similarity_threshold)[0]
+    logging.info(f"Found {len(high_similarity_indices)} chunks with similarity above threshold {similarity_threshold}")
 
     # Prepare the output
-    output_texts = [texts[i] for i in high_similarity_indices]
-    output_message = "\n--------------------\n".join(output_texts)
+    output_texts = [f"{texts[i]}\nSource: {links[i]}" for i in high_similarity_indices]
+    output_message = "\n\n--------------------\n\n".join(output_texts)
+    logging.info(f"Prepared output message with {len(output_texts)} chunks")
 
     # Process chunks with Ollama model
     chunk_size = 3000
     chunks = [output_message[i:i + chunk_size] for i in range(0, len(output_message), chunk_size)]
-    final_response = process_chunks_with_ollama(chunks, merged_query)
-    logging.info(f"final response =========== '{final_response}' retrieved.")
-    file_path = "final_response_output.txt"
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(final_response)
-
-    logging.info(f"Final response saved to {file_path}")
-
+    logging.info(f"Split output into {len(chunks)} chunks of size {chunk_size}")
     
+    logging.info("Starting Ollama model processing")
+    final_response = await process_chunks_with_ollama(chunks, merged_query)
+    logging.info("Successfully completed Ollama model processing")
 
     return True, final_response
 
-if __name__ == "__main__":
-    # Example usage
-    search_queries = ["آیفون ۱۶ قیمت"]  # Example queries
-    success, message = perform_search_and_scrape(search_queries)
-    logging.info(message)
+def find_similar_chunks_sync(queries: list[str]) -> tuple[bool, str]:
+    """
+    Synchronous wrapper for find_similar_chunks
+    """
+    logging.info("Starting synchronous find_similar_chunks")
+    result = asyncio.run(find_similar_chunks(queries))
+    logging.info("Completed synchronous find_similar_chunks")
+    return result
 
-    # queries = ["آیفون ۱۶ قیمت"]
-    # success, message = find_similar_chunks(queries)
-    # logging.info(message)
+if __name__ == "__main__":
+    logging.info("Starting main execution")
+    queries = ["آیفون ۱۶ قیمت"]
+    logging.info(f"Running with queries: {queries}")
+    success, message = find_similar_chunks_sync(queries)
+    logging.info(message)

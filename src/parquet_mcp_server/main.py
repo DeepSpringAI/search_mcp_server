@@ -92,13 +92,14 @@ async def handle_call_tool(
         if not queries:
             raise ValueError("Missing queries argument")
 
-        success, message = find_similar_chunks(queries)
+        logging.info(f"Starting extract-info-from-search with queries: {queries}")
+        success, message = await find_similar_chunks(queries)
+        logging.info(f"Extract-info-from-search completed with success: {success}")
         return [types.TextContent(type="text", text=message)]
 
     else:
         raise ValueError(f"Unknown tool: {name}")
 
-        
 async def main():
     """Run the server using stdin/stdout streams."""
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
