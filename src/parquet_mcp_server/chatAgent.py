@@ -74,14 +74,14 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         You are a web search assistant. 
         Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
         Pass user queries to mcp_server and get results.
-        Pass "ALL" information to summarizer.
+        Pass All results along with their sources at the end to summerizer.
         """
     else:  # "previous"
         fetcher_system = """
         You are a data retriever. 
         Retrieve results only from previously stored searches.
         Do not generate new search queries.
-        Pass "ALL" information to summarizer.
+        Pass All results along with their sources at the end to summerizer.
         """
 
     fetcher = AssistantAgent(
