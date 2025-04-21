@@ -83,7 +83,7 @@ async def handle_call_tool(
         if not queries:
             raise ValueError("Missing queries argument")
 
-        success, message = perform_search_and_scrape(queries, page_number)
+        success, message = await perform_search_and_scrape(queries, page_number)
         return [types.TextContent(type="text", text=message)]
 
     elif name == "extract-info-from-search":

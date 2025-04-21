@@ -241,7 +241,7 @@ def scrape_urls(organic_results):
     return scrape_results 
 
 
-def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -> tuple[bool, str]:
+async def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -> tuple[bool, str]:
     """
     Perform searches and scrape URLs from the organic results for multiple queries.
     
@@ -307,42 +307,60 @@ def perform_search_and_scrape(search_queries: list[str], page_number: int = 1) -
     logging.info(f"All results saved to {output_path}")
 
 
-    return find_similar_chunks(search_queries) 
+    return await find_similar_chunks(search_queries) 
     
 
-async def process_chunks_with_ollama(chunks, user_query):
+async def summary_with_ollama(text: str, user_query: str) -> str:
     """
-    Process each chunk with the Ollama model and combine the results asynchronously.
+    Process text with the Ollama model in chunks and ensure the final result is under 4000 characters.
     
     Args:
-        chunks (list): List of text chunks to process
+        text (str): The complete text to process
         user_query (str): The user's query
     
     Returns:
-        str: Combined response from the model
+        str: Final response from the model under 4000 characters
     """
-    logging.info(f"Starting async processing of {len(chunks)} chunks")
-    chunk_responses = []
-
-    # Create a list of coroutines for each chunk
-    async def process_chunk(chunk):
+    logging.info("Starting summary_with_ollama processing")
+    
+    async def process_chunk(chunk: str) -> str:
+        """Process a single chunk with the Ollama model."""
         try:
-            prompt_content = f"This is the user input query: {user_query}\nand this is the extracted information from the internet. please extract all the information related to the user query based on these information (for each one please set the source or link of the information): \n{chunk}"
+            prompt_content = f"This is the user input query: {user_query}\nand this is the extracted information from the internet. Please summarize the results but mention all the information related to user query. Don't forget to add the sources links: \n{chunk}"
             chunk_response = await ollama_model.ainvoke([HumanMessage(content=prompt_content)])
             return chunk_response.content
         except Exception as e:
             logging.error(f"Error processing chunk: {str(e)}")
             return ""
 
-    # Process all chunks concurrently
-    chunk_tasks = [process_chunk(chunk) for chunk in chunks]
-    chunk_responses = await asyncio.gather(*chunk_tasks)
+    async def process_text_in_chunks(input_text: str) -> str:
+        """Process text in chunks and combine results."""
+        chunk_size = 3000
+        chunks = [input_text[i:i + chunk_size] for i in range(0, len(input_text), chunk_size)]
+        logging.info(f"Split text into {len(chunks)} chunks of size {chunk_size}")
+        
+        # Process all chunks concurrently
+        chunk_tasks = [process_chunk(chunk) for chunk in chunks]
+        chunk_responses = await asyncio.gather(*chunk_tasks)
+        
+        # Combine all responses
+        combined_response = "\n\n\n------------------------------------------------ \n\n\n".join(chunk_responses)
+        logging.info(f"Combined response length: {len(combined_response)}")
+        
+        return combined_response
+
+    # First pass: process the original text
+    first_pass_result = await process_text_in_chunks(text)
     
-    logging.info("Successfully processed all chunks")
-    combined_response = " ".join(chunk_responses)
-    logging.info("Combined all responses")
+    # If the result is still too long, process it again
+    if len(first_pass_result) > 4000:
+        logging.info("First pass result too long, processing again")
+        final_result = await process_text_in_chunks(first_pass_result)
+    else:
+        final_result = first_pass_result
     
-    return combined_response
+    logging.info(f"Final result length: {len(final_result)}")
+    return final_result
 
 async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     """
@@ -402,29 +420,25 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     output_message = "\n\n--------------------\n\n".join(output_texts)
     logging.info(f"Prepared output message with {len(output_texts)} chunks")
 
-    # Process chunks with Ollama model
-    chunk_size = 3000
-    chunks = [output_message[i:i + chunk_size] for i in range(0, len(output_message), chunk_size)]
-    logging.info(f"Split output into {len(chunks)} chunks of size {chunk_size}")
-    
+    # Process with Ollama model
     logging.info("Starting Ollama model processing")
-    final_response = await process_chunks_with_ollama(chunks, merged_query)
+    final_response = await summary_with_ollama(output_message, merged_query)
     logging.info("Successfully completed Ollama model processing")
+
+    # Add all links to the final response
+    final_response = f"{final_response}\n\n--------------------\n\nAll of the searched websites is listed here: \n - {'\n - '.join(list(set(links)))}"
+
+    # Create tmp directory if it doesn't exist
+    os.makedirs('./tmp', exist_ok=True)
+            with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
+        f.write(final_response)
 
     return True, final_response
 
-def find_similar_chunks_sync(queries: list[str]) -> tuple[bool, str]:
-    """
-    Synchronous wrapper for find_similar_chunks
-    """
-    logging.info("Starting synchronous find_similar_chunks")
-    result = asyncio.run(find_similar_chunks(queries))
-    logging.info("Completed synchronous find_similar_chunks")
-    return result
 
 if __name__ == "__main__":
     logging.info("Starting main execution")
     queries = ["آیفون ۱۶ قیمت"]
     logging.info(f"Running with queries: {queries}")
-    success, message = find_similar_chunks_sync(queries)
+    success, message = asyncio.run(find_similar_chunks(queries))
     logging.info(message)

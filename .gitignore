@@ -13,5 +13,7 @@ wheels/
 
 *.log
 src/parquet_mcp_server/*.log
+src/parquet_mcp_server/.chainlit/
+src/parquet_mcp_server/output.json
 
 temp/

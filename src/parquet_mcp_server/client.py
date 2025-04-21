@@ -66,7 +66,7 @@ async def main():
                 if user_input.strip().lower() == "exit":
                     print("👋 Exiting.")
                     break
-                # user_input = "قیمت ایفون ۱۶ از سرچ قبلی بکش بیرون"
+                # user_input = "قیمت ایفون ۱۳ از سرچ قبلی بکش بیرون"
 
                 conversation = [HumanMessage(content=user_input)]
 
@@ -103,11 +103,11 @@ async def main():
 
                     # 🧠 Use Ollama LLM directly for 'extract-info-from-search'
                     if tool_result:
-                        prompt_content = f"This is the user input query: {user_input}\nand this is the extracted information from the internet. Please summarize the results but mention all the information related to user query. dont forget to add the sources links: \n{tool_result.content}"
+                        prompt_content = f"Here is the user's query: {user_input}\nAnd here is the extracted information from the internet. Please organize the information based on the user's query and include the source links: \n{tool_result.content}"
                         print(prompt_content)
                         print("\n--- 🧠 Using OpenAI to extract info ---")
 
-                        final_response = await openai_model.ainvoke([HumanMessage(content=prompt_content)])
+                        final_response = await model.ainvoke([HumanMessage(content=prompt_content)])
 
                         print("\n--- ✅ Final Answer ---")
                         print("**AI (Azure OpenAI)**:", final_response.content)
