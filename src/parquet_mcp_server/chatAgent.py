@@ -75,6 +75,7 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
         Pass user queries to mcp_server and get results.
         Pass "ALL" information to summarizer.
+        For each response set the source or link of the information.
         """
     else:  # "previous"
         fetcher_system = """
@@ -82,6 +83,7 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         Retrieve results only from previously stored searches.
         Do not generate new search queries.
         Pass "ALL" information to summarizer.
+        For each response set the source or link of the information.
         """
 
     fetcher = AssistantAgent(
