@@ -425,20 +425,15 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     final_response = await summary_with_ollama(output_message, merged_query)
     logging.info("Successfully completed Ollama model processing")
 
+    # Add all links to the final response
+    final_response = f"{final_response}\n\n--------------------\n\nAll of the searched websites is listed here: \n - {'\n - '.join(list(set(links)))}"
+
     return True, final_response
 
-def find_similar_chunks_sync(queries: list[str]) -> tuple[bool, str]:
-    """
-    Synchronous wrapper for find_similar_chunks
-    """
-    logging.info("Starting synchronous find_similar_chunks")
-    result = asyncio.run(find_similar_chunks(queries))
-    logging.info("Completed synchronous find_similar_chunks")
-    return result
 
 if __name__ == "__main__":
     logging.info("Starting main execution")
     queries = ["آیفون ۱۶ قیمت"]
     logging.info(f"Running with queries: {queries}")
-    success, message = find_similar_chunks_sync(queries)
+    success, message = asyncio.run(find_similar_chunks(queries))
     logging.info(message)
