@@ -74,14 +74,17 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         You are a web search assistant. 
         Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
         Pass user queries to mcp_server and get results.
-        Pass "ALL" information to summarizer.
+        Pass ALL information to summarizer.
+        Provide source or url link for all responses.
         """
     else:  # "previous"
         fetcher_system = """
         You are a data retriever. 
         Retrieve results only from previously stored searches.
         Do not generate new search queries.
-        Pass "ALL" information to summarizer.
+        Pass ALL information to summarizer.
+        Provide source or url link for all responses.
+
         """
 
     fetcher = AssistantAgent(
@@ -117,7 +120,6 @@ async def run_agent_stream(user_message: str):
 
     team = await recreate_team_based_on_mode()
     cl.user_session.set("team", team)  # optionally update session
-    print(team,"=0000000000000000000")
     streaming_response: cl.Message | None = None
 
     try:
