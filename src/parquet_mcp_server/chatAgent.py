@@ -17,8 +17,8 @@ import logging
 from autogen_core import TRACE_LOGGER_NAME, EVENT_LOGGER_NAME, ROOT_LOGGER_NAME
 
 # Silence all logs
-# logging.getLogger(TRACE_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
-# logging.getLogger(EVENT_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
+logging.getLogger(TRACE_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
+logging.getLogger(EVENT_LOGGER_NAME).setLevel(logging.CRITICAL + 1)
 logging.getLogger(ROOT_LOGGER_NAME).setLevel(logging.ERROR)
 
 
@@ -87,17 +87,13 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         print("==================================")
         fetcher_system = """
         You are a web search assistant. 
-        Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
-        Pass user queries to mcp_server and get results.
-        Return all sources that are listed here: 
-        "All of the searched websites is listed here"
+        Pass user prompt to mcp_server and get results.
         Pass All information along with their sources at the end to summerizer.
         """
     else:  # "previous"
         fetcher_system = """
-        Transform the user's prompt into a series of queries, translating them between English and Farsi as needed.
-        Retrieve the relevant information from prior searches based on these queries, making sure to collect all the source links from the previous retrieval.
-        Finally, send all the retrieved information along with their sources to the summarizer at the end.
+        You are a retriver, get data from previous searches do not search or scrape anything.
+        Pass All information along with their sources at the end to summerizer.
         """
 
     fetcher = AssistantAgent(
@@ -179,7 +175,7 @@ async def start_chat() -> None:
 @cl.action_callback("search_from_scratch")
 async def handle_search_from_scratch(action: cl.Action):
     cl.user_session.set("mode", "scratch")
-    response = await cl.AskUserMessage(content="Please enter the product name you want to search for like this 'Product X price'.").send()
+    response = await cl.AskUserMessage(content="Please enter the product name you want to search for like this  'product x price, قیمت محصول ایکس' .").send()
     if response and response.get("output"):
         await run_agent_stream(response["output"])
 
@@ -187,7 +183,7 @@ async def handle_search_from_scratch(action: cl.Action):
 @cl.action_callback("check_previous_results")
 async def handle_check_previous_results(action: cl.Action):
     cl.user_session.set("mode", "previous")
-    response = await cl.AskUserMessage(content="I will fetch results from your previous searches. Please enter the product name like this 'Product X price'.").send()
+    response = await cl.AskUserMessage(content="I will fetch results from your previous searches. Please enter the product name like this  'product x price, قیمت محصول ایکس' .").send()
     if response and response.get("output"):
         await run_agent_stream(response["output"])
 
