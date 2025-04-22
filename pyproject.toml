@@ -24,6 +24,9 @@ dependencies = [
     "firecrawl-py>=1.16.0",
     "langchain-mcp-adapters>=0.0.7",
     "langchain-openai>=0.3.12",
+    "autogen-ext>=0.5.3",
+    "autogen-core>=0.5.3",
+    "supabase>=2.15.0",
 ]
 requires-python = ">=3.10"
 
