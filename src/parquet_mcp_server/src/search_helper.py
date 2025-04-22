@@ -430,7 +430,7 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
     # Create tmp directory if it doesn't exist
     os.makedirs('./tmp', exist_ok=True)
-            with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
+    with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
         f.write(final_response)
 
     return True, final_response

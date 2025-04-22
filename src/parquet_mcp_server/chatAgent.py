@@ -22,7 +22,22 @@ from autogen_core import TRACE_LOGGER_NAME, EVENT_LOGGER_NAME, ROOT_LOGGER_NAME
 logging.getLogger(ROOT_LOGGER_NAME).setLevel(logging.ERROR)
 
 
+
+from autogen_ext.auth.azure import AzureTokenProvider
+from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
+from azure.identity import DefaultAzureCredential
+
 load_dotenv()
+
+az_model_client = AzureOpenAIChatCompletionClient(
+    azure_deployment="gpt-4o-mini",
+    model="gpt-4o-mini",
+    api_version=os.getenv("AZURE_OPENAI_VERSION"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"), # For key-based authentication.
+)
+
+
 
 # Base model for demonstration
 model = OpenAIChatCompletionClient(
@@ -74,20 +89,23 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         You are a web search assistant. 
         Generate search queries from user prompt. ONE ENGLISH QUERY, ONE PERSIAN QUERY.
         Pass user queries to mcp_server and get results.
-        Pass All results along with their sources at the end to summerizer.
+        Return all sources that are listed here: 
+        "All of the searched websites is listed here"
+        Pass All information along with their sources at the end to summerizer.
         """
     else:  # "previous"
         fetcher_system = """
-        You are a data retriever. 
-        Retrieve results only from previously stored searches.
-        Do not generate new search queries.
-        Pass All results along with their sources at the end to summerizer.
+        Transform the user's prompt into a series of queries, translating them between English and Farsi as needed.
+        Retrieve the relevant information from prior searches based on these queries, making sure to collect all the source links from the previous retrieval.
+        Finally, send all the retrieved information along with their sources to the summarizer at the end.
         """
 
     fetcher = AssistantAgent(
         name="fetcher",
         system_message=fetcher_system,
-        model_client=OpenAIChatCompletionClient(model="gpt-4o-mini"),
+        model_client=az_model_client,
+        # OpenAIChatCompletionClient(model="gpt-4o-mini"),
+        # az_model_client,
         tools=tools,
         reflect_on_tool_use=True,
         model_client_stream=True,
@@ -102,7 +120,9 @@ async def recreate_team_based_on_mode() -> RoundRobinGroupChat:
         4. DO NOT CONVERT PRICES TO EACH OTHER. ONLY ADD PRICES YOU ACTUALLY GET.
         5. After completing the above steps, hand off the conversation to the user.
         """,
-        model_client=OpenAIChatCompletionClient(model="gpt-4o-mini"),
+        model_client=az_model_client,
+        # az_model_client,
+        # OpenAIChatCompletionClient(model="gpt-4o-mini"),
         model_client_stream=True,
     )
 
@@ -159,7 +179,7 @@ async def start_chat() -> None:
 @cl.action_callback("search_from_scratch")
 async def handle_search_from_scratch(action: cl.Action):
     cl.user_session.set("mode", "scratch")
-    response = await cl.AskUserMessage(content="Please enter the product name you want to search for like this 'product X price'.").send()
+    response = await cl.AskUserMessage(content="Please enter the product name you want to search for like this 'Product X price'.").send()
     if response and response.get("output"):
         await run_agent_stream(response["output"])
 
@@ -167,7 +187,7 @@ async def handle_search_from_scratch(action: cl.Action):
 @cl.action_callback("check_previous_results")
 async def handle_check_previous_results(action: cl.Action):
     cl.user_session.set("mode", "previous")
-    response = await cl.AskUserMessage(content="I will fetch results from your previous searches. Please enter the product name like this 'from previous search check product X price'.").send()
+    response = await cl.AskUserMessage(content="I will fetch results from your previous searches. Please enter the product name like this 'Product X price'.").send()
     if response and response.get("output"):
         await run_agent_stream(response["output"])
 
