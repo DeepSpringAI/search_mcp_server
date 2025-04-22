@@ -1,0 +1,85 @@
+Metadata-Version: 2.1
+Name: aioshutil
+Version: 1.5
+Summary: Asynchronous shutil module.
+Home-page: https://github.com/kumaraditya303/aioshutil
+Author: Kumar Aditya
+Author-email: kumaraditya@python.org
+License: BSD License
+Keywords: asyncio,io,shutil
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Framework :: AsyncIO
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: BSD License
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: typing-extensions ; python_version < "3.10"
+
+# aioshutil: Asynchronous shutil module.
+
+[![Downloads](https://static.pepy.tech/badge/aioshutil)](https://pepy.tech/project/aioshutil) ![](https://img.shields.io/pypi/v/aioshutil)  ![](https://img.shields.io/pypi/pyversions/aioshutil) ![](https://img.shields.io/pypi/implementation/aioshutil)
+
+# Introduction
+
+`aioshutil` is a Python library which provides asynchronous version of function of shutil module. `shutil` module is blocking and using it in asyncio applications will block the event loop and slow down the application, `aioshutil` provides asynchronous friendly versions of the functions of the `shutil` module as it performs blocking io in a thread pool.
+
+# Installation
+
+```console
+$ pip install aioshutil
+```
+
+# Usage
+
+The API of `aioshutil` module is same as `shutil` module except that it is asynchronous.
+
+```python
+from aioshutil import rmtree
+await rmtree("/tmp")
+```
+
+`aioshutil` provides the following functions:
+
+- `copyfileobj`
+- `copyfile`
+- `copymode`
+- `copystat`
+- `copy`
+- `copy2`
+- `copytree`
+- `move`
+- `rmtree`
+- `make_archive`
+- `get_archive_formats`
+- `register_archive_format`
+- `unregister_archive_format`
+- `get_unpack_formats`
+- `register_unpack_format`
+- `unregister_unpack_format`
+- `unpack_archive`
+- `ignore_patterns`
+- `chown`
+- `which`
+- `get_terminal_size`
+
+`aioshutil` provides the following exceptions for consistency with `shutil` module:
+
+- `Error`
+- `SpecialFileError`
+- `ExecError`
+- `SameFileError`
+
+
