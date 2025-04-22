@@ -15,6 +15,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 from parquet_mcp_server.client import perform_search_and_scrape_async
 import asyncio
+from parquet_mcp_server.src.supabase_db import SupabaseDB
 
 
 # Set up logging
@@ -26,6 +27,8 @@ logging.basicConfig(
 # Load environment variables from .env file
 load_dotenv()
 
+# Initialize SupabaseDB
+db = SupabaseDB()
 
 # Initialize Ollama LangChain model
 ollama_model = ChatOllama(
