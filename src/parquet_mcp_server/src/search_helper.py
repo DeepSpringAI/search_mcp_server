@@ -406,7 +406,7 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
         if USE_SUPABASE:
             # Use Supabase similarity search
-            logging.info("Performing similarity search in Supabase")
+            logging.info("Performing similarity search in Supabase Database")
             similar_results = db.search_results_by_similarity(
                 query_embedding=query_embeddings[0],
                 threshold=0.55,

@@ -18,3 +18,5 @@ src/parquet_mcp_server/.chainlit/
 src/parquet_mcp_server/output.json
 
 temp/
+output.json
+tmp/
