@@ -27,8 +27,15 @@ logging.basicConfig(
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize SupabaseDB
-db = SupabaseDB()
+# Configuration
+USE_SUPABASE = os.getenv("USE_SUPABASE", "true").lower() == "true"
+JSON_FILE_PATH = os.getenv("JSON_FILE_PATH", "output.json")
+
+# Initialize storage based on configuration
+if USE_SUPABASE:
+    db = SupabaseDB()
+else:
+    db = None
 
 # Initialize Ollama LangChain model
 ollama_model = ChatOllama(
@@ -293,25 +300,32 @@ async def perform_search_and_scrape(search_queries: list[str], page_number: int 
                     # Combine text and embeddings into the result structure
                     current_date = datetime.now().strftime("%Y-%m-%d")  # Get current date as string
                     for chunk, embed in zip(chunks, embeddings):
-                        all_results.append({
+                        result_data = {
                             'text': chunk,
                             'metadata': {
                                 'url': url,
-                                'date': current_date  # Add current date to metadata
+                                'date': current_date,  # Add current date to metadata
+                                'query': search_query  # Add search query to metadata
                             },
-                            'embed': embed
-                        })
+                            'embedding': embed  # Changed from 'embed' to 'embedding' to match Supabase schema
+                        }
+                        all_results.append(result_data)
+                        
+                        # Save to storage based on configuration
+                        if USE_SUPABASE:
+                            db_result = db.add_new_data(result_data)
+                            if not db_result["supabase"]["success"]:
+                                logging.error(f"Error saving to Supabase: {db_result['supabase']['error']}")
+                            if not db_result["json"]["success"]:
+                                logging.error(f"Error saving to JSON: {db_result['json']['error']}")
 
-    # Save all results to a JSON file in the current directory
-    output_path = './output.json'
-    with open(output_path, 'w', encoding='utf-8') as output_file:
+    # Save all results to a JSON file
+    with open(JSON_FILE_PATH, 'w', encoding='utf-8') as output_file:
         json.dump(all_results, output_file, ensure_ascii=False, indent=4)
     
-    logging.info(f"All results saved to {output_path}")
+    logging.info(f"All results saved to {JSON_FILE_PATH}")
+    return True, "Search and scrape completed successfully"
 
-
-    return await find_similar_chunks(search_queries) 
-    
 
 async def summary_with_ollama(text: str, user_query: str) -> str:
     """
@@ -367,7 +381,7 @@ async def summary_with_ollama(text: str, user_query: str) -> str:
 
 async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
     """
-    Get information from the results of a previous search.
+    Get information from the results of a previous search using either Supabase or JSON file.
     
     Args:
         queries (list[str]): List of search queries to merge.
@@ -376,67 +390,104 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
         tuple[bool, str]: (success status, message with similar text chunks)
     """
     logging.info(f"Starting find_similar_chunks with queries: {queries}")
-    similarity_threshold = 0.55
-    json_path = './output.json'
-
+    
     # Merge queries with 'and'
     merged_query = ' and '.join(queries)
     logging.info(f"Merged query: {merged_query}")
 
-    # Load the JSON file containing embeddings
     try:
-        logging.info(f"Loading JSON file from {json_path}")
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        logging.info(f"Successfully loaded JSON file with {len(data)} entries")
+        # Get query embedding
+        logging.info("Generating query embedding")
+        query_embeddings = get_embedding([merged_query])
+        if not query_embeddings:
+            logging.error("Failed to generate query embedding")
+            return False, "Failed to generate query embedding"
+        logging.info("Successfully generated query embedding")
+
+        if USE_SUPABASE:
+            # Use Supabase similarity search
+            logging.info("Performing similarity search in Supabase")
+            similar_results = db.search_results_by_similarity(
+                query_embedding=query_embeddings[0],
+                threshold=0.55,
+                match_count=100
+            )
+
+            if not similar_results["success"]:
+                logging.error(f"Error in similarity search: {similar_results['error']}")
+                return False, f"Error in similarity search: {similar_results['error']}"
+
+            data = similar_results["data"]
+        else:
+            # Use JSON file for similarity search
+            logging.info(f"Loading JSON file from {JSON_FILE_PATH}")
+            try:
+                with open(JSON_FILE_PATH, 'r', encoding='utf-8') as f:
+                    all_data = json.load(f)
+                
+                # Calculate similarities locally
+                texts = [item['text'] for item in all_data]
+                links = [item.get('metadata', {}).get('url', '') for item in all_data]
+                embeddings = np.array([item['embedding'] for item in all_data])
+                
+                query_embedding = np.array(query_embeddings[0])
+                similarities = np.dot(embeddings, query_embedding) / (
+                    np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_embedding)
+                )
+                
+                # Get indices of chunks with similarity above threshold
+                high_similarity_indices = np.where(similarities > 0.55)[0]
+                
+                # Prepare data in the same format as Supabase results
+                data = []
+                for idx in high_similarity_indices:
+                    data.append({
+                        'text': texts[idx],
+                        'metadata': {'url': links[idx]},
+                        'similarity': float(similarities[idx])
+                    })
+                
+            except Exception as e:
+                logging.error(f"Error loading JSON file: {str(e)}")
+                return False, f"Error loading JSON file: {str(e)}"
+
+        if not data:
+            logging.info("No similar results found")
+            return True, "No similar results found"
+
+        # Prepare the output
+        output_texts = []
+        links = set()
+        for item in data:
+            text = item.get('text', '')
+            url = item.get('metadata', {}).get('url', '')
+            similarity = item.get('similarity', 0)
+            
+            if text and url:
+                output_texts.append(f"{text}\nSource: {url} (Similarity: {similarity:.2f})")
+                links.add(url)
+
+        output_message = "\n\n--------------------\n\n".join(output_texts)
+        logging.info(f"Prepared output message with {len(output_texts)} chunks")
+
+        # Process with Ollama model
+        logging.info("Starting Ollama model processing")
+        final_response = await summary_with_ollama(output_message, merged_query)
+        logging.info("Successfully completed Ollama model processing")
+
+        # Add all links to the final response
+        final_response = f"{final_response}\n\n--------------------\n\nAll of the searched websites is listed here: \n - {'\n - '.join(list(links))}"
+
+        # Create tmp directory if it doesn't exist
+        os.makedirs('./tmp', exist_ok=True)
+        with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
+            f.write(final_response)
+
+        return True, final_response
+
     except Exception as e:
-        logging.error(f"Error loading JSON file: {str(e)}")
-        return False, f"Error loading JSON file: {str(e)}"
-
-    # Extract embeddings and texts
-    texts = [item['text'] for item in data]
-    links = [item.get('metadata', {}).get('url', '') for item in data]
-    embeddings = np.array([item['embed'] for item in data])
-    logging.info(f"Extracted {len(texts)} texts and {len(embeddings)} embeddings")
-
-    # Get query embedding
-    logging.info("Generating query embedding")
-    query_embeddings = get_embedding([merged_query])
-    if not query_embeddings:
-        logging.error("Failed to generate query embedding")
-        return False, "Failed to generate query embedding"
-    logging.info("Successfully generated query embedding")
-
-    query_embedding = np.array(query_embeddings[0])
-
-    # Calculate cosine similarity
-    similarities = np.dot(embeddings, query_embedding) / (
-        np.linalg.norm(embeddings, axis=1) * np.linalg.norm(query_embedding)
-    )
-
-    # Get indices of chunks with similarity above threshold
-    high_similarity_indices = np.where(similarities > similarity_threshold)[0]
-    logging.info(f"Found {len(high_similarity_indices)} chunks with similarity above threshold {similarity_threshold}")
-
-    # Prepare the output
-    output_texts = [f"{texts[i]}\nSource: {links[i]}" for i in high_similarity_indices]
-    output_message = "\n\n--------------------\n\n".join(output_texts)
-    logging.info(f"Prepared output message with {len(output_texts)} chunks")
-
-    # Process with Ollama model
-    logging.info("Starting Ollama model processing")
-    final_response = await summary_with_ollama(output_message, merged_query)
-    logging.info("Successfully completed Ollama model processing")
-
-    # Add all links to the final response
-    final_response = f"{final_response}\n\n--------------------\n\nAll of the searched websites is listed here: \n - {'\n - '.join(list(set(links)))}"
-
-    # Create tmp directory if it doesn't exist
-    os.makedirs('./tmp', exist_ok=True)
-            with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
-        f.write(final_response)
-
-    return True, final_response
+        logging.error(f"Error in find_similar_chunks: {str(e)}")
+        return False, f"Error in find_similar_chunks: {str(e)}"
 
 
 if __name__ == "__main__":
@@ -444,4 +495,5 @@ if __name__ == "__main__":
     queries = ["آیفون ۱۶ قیمت"]
     logging.info(f"Running with queries: {queries}")
     success, message = asyncio.run(find_similar_chunks(queries))
+    # success, message = asyncio.run(perform_search_and_scrape(queries))
     logging.info(message)
