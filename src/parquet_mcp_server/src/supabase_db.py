@@ -25,8 +25,40 @@ class SupabaseDB:
             Dict containing the inserted data or error information
         """
         try:
-            response = self.supabase.table('web_search').insert(data).execute()
-            return {"success": True, "data": response.data}
+            # Extract URL and search_id from metadata (assuming metadata is a dictionary)
+            url_to_delete = data.get("metadata", {}).get("url")
+            new_search_id = data.get("metadata", {}).get("search_id")
+
+            if url_to_delete and new_search_id:
+                # Step 1: Get rows with the same URL and check that search_id is different
+                response = self.supabase.table('web_search').select("id, metadata").filter('metadata->>url', 'eq', url_to_delete).execute()
+
+                rows_to_delete = []
+                for row in response.data:
+                    # Check if the search_id is different in the existing row
+                    existing_search_id = row['metadata'].get('search_id')
+                    if existing_search_id != new_search_id:
+                        rows_to_delete.append(row['id'])
+
+                if rows_to_delete:
+                    # Step 2: Delete rows with the same URL and different search_id
+                    delete_response = self.supabase.table('web_search').delete().in_('id', rows_to_delete).execute()
+
+                    # If there's an error with deletion, raise an exception
+                    if 'error' in delete_response:
+                        raise Exception(f"Failed to delete old data: {delete_response['error']}")
+                    
+                # Step 3: Insert new data
+                insert_response = self.supabase.table('web_search').insert(data).execute()
+
+                # If there's an error with insertion, raise an exception
+                if 'error' in insert_response:
+                    raise Exception(f"Failed to insert new data: {insert_response['error']}")
+
+                return {"success": True, "data": insert_response.data}
+            else:
+                raise Exception("URL or search_id not found in the provided data metadata.")
+
         except Exception as e:
             raise Exception(f"Failed to insert data into Supabase: {str(e)}")
 
@@ -85,6 +117,7 @@ if __name__ == "__main__":
         "text": "This is a sample chunk of text from a web search result.",
         "metadata": {
             "title": "Sample Web Search Result",
+            "search_id": "2",
             "url": "https://example.com",
             "description": "This is a sample web search result",
             "timestamp": "2024-03-20T12:00:00Z"
@@ -98,14 +131,14 @@ if __name__ == "__main__":
     # Add new data
     insert_result = db.add_new_data(sample_data)
     
-    # Get top 10 results
-    top_results = db.get_top_10_results()
+    # # Get top 10 results
+    # top_results = db.get_top_10_results()
     
-    # Search results by similarity
-    similarity_results = db.search_results_by_similarity(
-        query_embedding, 
-        threshold=0.55, 
-        match_count=10
-    )
+    # # Search results by similarity
+    # similarity_results = db.search_results_by_similarity(
+    #     query_embedding, 
+    #     threshold=0.55, 
+    #     match_count=10
+    # )
 
-    print(similarity_results)
+    # print(similarity_results)

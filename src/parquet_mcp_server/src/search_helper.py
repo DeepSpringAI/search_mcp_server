@@ -16,6 +16,24 @@ from langchain_core.messages import HumanMessage
 from parquet_mcp_server.client import perform_search_and_scrape_async
 import asyncio
 from parquet_mcp_server.src.supabase_db import SupabaseDB
+import time
+import random
+import hashlib
+
+def generate_unique_id():
+    # Get the current time in milliseconds
+    current_time = int(time.time() * 1000)
+    
+    # Generate a random number
+    random_number = random.randint(1000, 9999)
+    
+    # Combine the time and random number to form a unique string
+    unique_string = f"{current_time}-{random_number}"
+    
+    # Optionally, hash the string to shorten or obscure the ID
+    unique_id = hashlib.sha256(unique_string.encode()).hexdigest()
+    
+    return unique_id
 
 
 # Set up logging
@@ -262,6 +280,9 @@ async def perform_search_and_scrape(search_queries: list[str], page_number: int 
     Returns:
         tuple[bool, str]: (success status, message)
     """
+    # Example usage
+    unique_id = generate_unique_id()
+
     all_results = []  # List to store all results with text and embeddings
 
     for search_query in search_queries:
@@ -304,8 +325,9 @@ async def perform_search_and_scrape(search_queries: list[str], page_number: int 
                             'text': chunk,
                             'metadata': {
                                 'url': url,
-                                'date': current_date,  # Add current date to metadata
-                                'query': search_query  # Add search query to metadata
+                                'date': current_date,
+                                'query': search_query,
+                                'search_id': unique_id
                             },
                             'embedding': embed  # Changed from 'embed' to 'embedding' to match Supabase schema
                         }
@@ -314,17 +336,13 @@ async def perform_search_and_scrape(search_queries: list[str], page_number: int 
                         # Save to storage based on configuration
                         if USE_SUPABASE:
                             db_result = db.add_new_data(result_data)
-                            if not db_result["supabase"]["success"]:
-                                logging.error(f"Error saving to Supabase: {db_result['supabase']['error']}")
-                            if not db_result["json"]["success"]:
-                                logging.error(f"Error saving to JSON: {db_result['json']['error']}")
-
+                            logging.info(f"Saved to Supabase")
     # Save all results to a JSON file
     with open(JSON_FILE_PATH, 'w', encoding='utf-8') as output_file:
         json.dump(all_results, output_file, ensure_ascii=False, indent=4)
     
     logging.info(f"All results saved to {JSON_FILE_PATH}")
-    return True, "Search and scrape completed successfully"
+    return await find_similar_chunks(search_queries)
 
 
 async def summary_with_ollama(text: str, user_query: str) -> str:
@@ -480,8 +498,10 @@ async def find_similar_chunks(queries: list[str]) -> tuple[bool, str]:
 
         # Create tmp directory if it doesn't exist
         os.makedirs('./tmp', exist_ok=True)
-        with open(f'./tmp/output_{int(time.time())}.txt', 'w', encoding='utf-8') as f:
+        output_file = f'./tmp/output_{int(time.time())}.txt'
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(final_response)
+        logging.info(f"Successfully wrote output to {output_file}")
 
         return True, final_response
 
@@ -494,6 +514,6 @@ if __name__ == "__main__":
     logging.info("Starting main execution")
     queries = ["آیفون ۱۶ قیمت"]
     logging.info(f"Running with queries: {queries}")
-    success, message = asyncio.run(find_similar_chunks(queries))
-    # success, message = asyncio.run(perform_search_and_scrape(queries))
+    # success, message = asyncio.run(find_similar_chunks(queries))
+    success, message = asyncio.run(perform_search_and_scrape(queries))
     logging.info(message)

@@ -153,3 +153,57 @@ find_similar_chunks(["macbook"])
    - The PostgreSQL server is running and accessible
    - You have the necessary permissions to create/modify tables
    - The pgvector extension is installed in your database
+
+## PostgreSQL Function for Vector Similarity Search
+
+To perform vector similarity searches in PostgreSQL, you can use the following function:
+
+```sql
+-- Create the function for vector similarity search
+CREATE OR REPLACE FUNCTION match_web_search(
+  query_embedding vector(1024),  -- Adjusted vector size
+  match_threshold float,
+  match_count int  -- User-defined limit for number of results
+)
+RETURNS TABLE (
+  id bigint,
+  metadata jsonb,
+  text TEXT,  -- Added text column to the result
+  date TIMESTAMP,  -- Using the date column instead of created_at
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    web_search.id,
+    web_search.metadata,
+    web_search.text,  -- Returning the full text of the chunk
+    web_search.date,  -- Returning the date timestamp
+    1 - (web_search.embedding <=> query_embedding) as similarity
+  FROM web_search
+  WHERE 1 - (web_search.embedding <=> query_embedding) > match_threshold
+  ORDER BY web_search.date DESC,  -- Sort by date in descending order (newest first)
+           web_search.embedding <=> query_embedding  -- Sort by similarity
+  LIMIT match_count;  -- Limit the results to the match_count specified by the user
+END;
+$$;
+```
+
+This function allows you to perform similarity searches on vector embeddings stored in a PostgreSQL database, returning results that meet a specified similarity threshold and limiting the number of results based on user input. The results are sorted by date and similarity.
+
+
+
+## Postgres table creation
+```
+CREATE TABLE web_search (
+    id SERIAL PRIMARY KEY,
+    text TEXT,
+    metadata JSONB,
+    embedding VECTOR(1024),
+
+    -- This will be auto-updated
+    date TIMESTAMP DEFAULT NOW()
+);
+```
