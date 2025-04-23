@@ -28,7 +28,7 @@ class SupabaseDB:
             response = self.supabase.table('web_search').insert(data).execute()
             return {"success": True, "data": response.data}
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            raise Exception(f"Failed to insert data into Supabase: {str(e)}")
 
     def get_top_10_results(self) -> Dict[str, Any]:
         """
