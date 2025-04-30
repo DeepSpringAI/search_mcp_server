@@ -10,6 +10,10 @@ This server is particularly useful for:
 - Applications requiring web search capabilities
 - Projects needing to find similar content based on search queries
 
+<a href="https://glama.ai/mcp/servers/@DeepSpringAI/parquet_mcp_server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@DeepSpringAI/parquet_mcp_server/badge" alt="parquet mcp server MCP server" />
+</a>
+
 ## Installation
 
 ### Installing via Smithery
